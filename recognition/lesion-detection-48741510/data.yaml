@@ -1,0 +1,17 @@
+# Following from https://labelformat.com/formats/object-detection/yolov8/
+# Dataset root directory
+path: /home/Student/s4874151/ISIC2018/yolo
+
+# Dataset splits (relative to path)
+train: train/images
+val: val/images
+test: test/images
+
+# Number of classes
+nc: 7
+
+# Class names mapping
+names:
+0: ___
+1: ___
+2: TBC
