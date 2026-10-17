@@ -25,7 +25,7 @@ random.seed (42) # for reproducibility
 # pairing of masks with corresponding images
 stems = []
 for f in os.listdir (src_masks): # listdir returns string of image names
-    if not f.endswith("_segmentation.png"): 
+    if not f.endswith("_segmentation.png"): # error handling
         continue
     stem = f.replace("_segmentation.png","")
     if os.path.exists(os.path.join(src_imgs, stem + ".jpg")): # if image for this mask exists
@@ -34,31 +34,31 @@ for f in os.listdir (src_masks): # listdir returns string of image names
         print(f"No image found for mask {f}") # error handling
 
 # applying the splits
-stems.sort() # descending order
+stems.sort() # ascending order
 random.shuffle(stems) # now random
 n_train = int(len(stems) * ratios["train"]) # number of training images
 n_val = int(len(stems) * ratios["val"]) # number of validation images
-assignment = {}
 
+assignment = {}
 # assigning every stem to a certain folder - as stems are already randomised, can simply go up to number req.
 for i, s in enumerate(stems):
     assignment[s] = "train" if i < n_train else "val" if i < n_train + n_val else "test"
 
 
-MIN_AREA = 50  # ignore specks smaller than this many pixels
-counts = {"train": 0, "val": 0, "test": 0}
+MIN_AREA = 50  # ignore specks smaller than this many pixels - NOTE: suggested by Claude Sonnet 5 (Medium)
+counts = {"train": 0, "val": 0, "test": 0} # for ensuring correct number of images
 
 for stem, split in assignment.items():
     images_dir = os.path.join(output, split, "images")
     labels_dir = os.path.join(output, split, "labels") # adding to relevant directories
     os.makedirs(images_dir, exist_ok=True)
-    os.makedirs(labels_dir, exist_ok=True) 
+    os.makedirs(labels_dir, exist_ok=True) # NOTE: helped by Claude Sonnet 5 (Medium) 
 
 
 # SECTION 2: CONVERTING TO ANNOTATION FILE (.txt)
     img_path = os.path.join(src_imgs, stem + ".jpg")
     mask = cv2.imread(os.path.join(src_masks, stem + "_segmentation.png"), cv2.IMREAD_GRAYSCALE) # grayscale
-    img = cv2.imread(img_path)
+    img = cv2.imread(img_path) 
 
     if img is None or mask is None:
         print(f"Skipped {stem}; could not read image/mask") # error handling
@@ -83,38 +83,19 @@ for stem, split in assignment.items():
     if contours: # if exists
         bx, by, bw, bh = cv2.boundingRect(np.vstack(contours))
 
-        # normalise to YOLO format (class x_center y_center width height)
+        # normalise to YOLO format as highlighted in website (class x_center y_center width height)
         x_center = (bx + bw / 2) / w
         y_center = (by + bh / 2) / h
         annotations.append(f"0 {x_center:.6f} {y_center:.6f} {bw / w:.6f} {bh / h:.6f}")
 
-    # write the label file (empty file = no lesion, valid in YOLO)
+    # write the label file (empty file = no lesion)
     with open(os.path.join(labels_dir, stem + ".txt"), "w") as f:
         f.write("\n".join(annotations))
 
-    #  copy the image across (copy, not move)
+    #  copy the image across 
     shutil.copy2(img_path, os.path.join(images_dir, stem + ".jpg"))
     counts[split] += 1
 
 print("Done:", counts)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
