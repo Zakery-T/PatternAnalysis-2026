@@ -1,7 +1,8 @@
+import os
 from ultralytics import YOLO
 
 # loading of model
-def load_model(weights = "yolov8n.pt"):
+def load_initial_model(weights = "yolov8n.pt"):
     """
     Loading of YOLOv8 model from ulralytics (in partciular yolov8n)
 
@@ -11,6 +12,9 @@ def load_model(weights = "yolov8n.pt"):
     Returns:
         YOLOv8 model pre-trained on COCO dataset
     """
-    model = YOLO(weights)
-    return model
+    return YOLO(weights)
 
+def load_trained(weights_path): # loading up a trained YOLO model 
+    if not os.path.exists(weights_path):
+        raise FileNotFoundError(f"No model found at {weights_path}")
+    return YOLO(str(weights_path))
