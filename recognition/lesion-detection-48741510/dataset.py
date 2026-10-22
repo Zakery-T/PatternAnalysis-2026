@@ -1,12 +1,13 @@
 """
-File for loading and processing of ISIC2018 data. Important due to variable size and resolution of images within dataset.
+File for loading and processing of ISIC2017 data. Important due to variable size and resolution of images within dataset.
+
+NOTE: on 22/10/2026, decided to switch from ISIC2018 --> ISIC2017 data
 """
 import os
 import cv2 # industry-standard for working with visual images
-import random # for shufflinf of stems
 import numpy as np
 import shutil
-# import csv # for classification labels
+import csv # for classification labels
 
 # IN LINE WITH RESEARCH, 3 CORE SECTIONS TO PREPARE DATASET
 
@@ -14,19 +15,33 @@ import shutil
 # SECTION 1: SETTING UP PARALLEL DIRECTORIES FOR TRAIN + VAL AND SORTING OF IMAGES
 
 # creating filepaths using os
-dataset = "/home/groups/comp3710/ISIC2018" # filepath in Rangpur
-my_dir = "/home/Student/s4874151/01final"
+my_dir = "C:/Users/zakts/CODE/comp3710_final" # my local directory
+dataset = os.path.join(my_dir, "ISIC2017") # dataset location 
 output = os.path.join (my_dir, "yolo") # output directory
-src_imgs = "/home/groups/comp3710/ISIC2018/ISIC2018_Task1-2_Training_Input_x2" # training images directory in Rangpur
-src_masks ="/home/groups/comp3710/ISIC2018/ISIC2018_Task1_Training_GroundTruth_x2" # corresponding segmentation masks directory
-# csv_path = os.path.join(my_dir, "ISIC2018_Task3_Training_GroundTruth.csv")
+
+# ISIC2017 comes with pre-determined splits (unlike ISIC2018)
+SPLIT_DIRS = {
+    "train": {
+        "imgs":  os.path.join(dataset, "ISIC-2017_Training_Data"),
+        "masks": os.path.join(dataset, "ISIC-2017_Training_Part1_GroundTruth"),
+        "csv":   os.path.join(dataset, "ISIC-2017_Training_Part3_GroundTruth.csv"),
+    },
+    "val": {
+        "imgs":  os.path.join(dataset, "ISIC-2017_Validation_Data"),
+        "masks": os.path.join(dataset, "ISIC-2017_Validation_Part1_GroundTruth"),
+        "csv":   os.path.join(dataset, "ISIC-2017_Validation_Part3_GroundTruth.csv"),
+    },
+    "test": {
+        "imgs":  os.path.join(dataset, "ISIC-2017_Test_v2_Data"),
+        "masks": os.path.join(dataset, "ISIC-2017_Test_v2_Part1_GroundTruth"),
+        "csv":   os.path.join(dataset, "ISIC-2017_Test_v2_Part3_GroundTruth.csv"),
+    },
+}
 
 # other relevant configurations
-CLASS_NAMES =["lesion"] # UPDATING DEPENDNING ON ED BOARD RESPONSE
-RATIOS = {"train": 0.8, "val": 0.1, "test": 0.1} # splits - ISIC2018 does not provide their own splits thus must make our own
-MIN_AREA = 50 # removes specks smaller than this resolution - NOTE: Claude Sonnet 5.0 (Medium)
-SEED = 42 # for reproducibility
-
+CLASS_NAMES =["melanoma", "seborrheic keratosis", "nevus"] # UPDATING DEPENDNING ON ED BOARD RESPONSE
+SPLITS = list(SPLIT_DIRS.keys())
+MIN_AREA = 50
 
 def get_stems(src_imgs, src_masks):
     """Retrieves the stem for each image and corresponding mask ie. its image ID."""
@@ -34,31 +49,32 @@ def get_stems(src_imgs, src_masks):
     for f in os.listdir (src_masks): # listdir returns string of image names
         if not f.endswith("_segmentation.png"): # error handling
             continue
-        stem = f.replace("_segmentation.png","") # removing segmentation label
+        stem = f.replace("_segmentation.png","") # removing segmentation label\
         if os.path.exists(os.path.join(src_imgs, stem + ".jpg")): # if image for this mask exists - src_imgs/stem.jpg
                 stems.append(stem)
         else:
             print(f"No image found for mask {f}") # error handling
     return sorted(stems) # ascending order
 
-def split_stems(stems, ratios, seed = SEED):
-    """Splits images and assigns them into train or validation sets."""
-    stems = list(stems)
-    random.Random(seed).shuffle(stems) # now random
-    n_train = int(len(stems) * ratios["train"]) # number of training images
-    n_val = int(len(stems) * ratios["val"]) # number of validation images
-
-    assignment = {}
-    # assigning every stem to a certain folder - as stems are already randomised, can simply go up to number req.
-    for i, s in enumerate(stems):
-        assignment[s] = "train" if i < n_train else "val" if i < n_train + n_val else "test"
-    return assignment
-
-def make_dirs(output, ratios):
+def make_dirs(output, splits):
     """Creates the output/{split}/images and output/{split}/labels directories."""
-    for split in ratios:
-        os.makedirs(os.path.join(output, split, "images"), exist_ok=True)
-        os.makedirs(os.path.join(output, split, "labels"), exist_ok=True)
+    for i in splits:
+        os.makedirs(os.path.join(output, i, "images"), exist_ok=True)
+        os.makedirs(os.path.join(output, i, "labels"), exist_ok=True)
+
+def load_labels(csv_path):
+    """Reads a Part 3 CSV and returns {image_id: class_id}, following CLASS_NAMES order."""
+    labels = {}
+    with open(csv_path, newline="") as f:
+        for row in csv.DictReader(f):
+            if float(row["melanoma"]) == 1:
+                labels[row["image_id"]] = 0  # melanoma
+            elif float(row["seborrheic_keratosis"]) == 1:
+                labels[row["image_id"]] = 1  # seborrheic keratosis
+            else:
+                labels[row["image_id"]] = 2  # nevus (both columns 0)
+    return labels
+
 
 # =================================================================
 # SECTION 2: CONVERTING TO ANNOTATION FILE (.txt) - for EVERY image
@@ -78,10 +94,6 @@ def mask_to_box(mask, w, h, min_area = MIN_AREA):
     bx, by, bw, bh = cv2.boundingRect(np.vstack(contours)) # one box around everything left
     return (bx + bw / 2) / w, (by + bh / 2) / h, bw / w, bh / h
 
-def get_class(stem):
-    """Class id for an image, single class for now waiting on EdBoard response"""
-    return 0
-
 def write_label(label_path, cls, box):
     """Writes one line for YOLO annotation.txt file: class x_center y_center width height."""
     xc, yc, bw, bh = box
@@ -89,8 +101,10 @@ def write_label(label_path, cls, box):
         f.write(f"{cls} {xc:.6f} {yc:.6f} {bw:.6f} {bh:.6f}\n")
 
 
-def process_image(stem, split):
+def process_image(stem, split, labels):
     """Converts one image/mask pair into a label file (annotation.txt) and copied image. Combining the above functions into one single call."""
+    src_imgs = SPLIT_DIRS[split]["imgs"]
+    src_masks = SPLIT_DIRS[split]["masks"]
     img_path = os.path.join(src_imgs, stem + ".jpg")
     mask_path = os.path.join(src_masks, stem + "_segmentation.png")
     img = cv2.imread(img_path)
@@ -99,6 +113,9 @@ def process_image(stem, split):
     if img is None or mask is None: # error handling
         print(f"Skipped {stem}; could not read image/mask")
         return False
+    if stem not in labels:
+        print(f"Skipped {stem}; no class label in CSV")
+        return False
 
     h, w = img.shape[:2]
     box = mask_to_box(mask, w, h) # creates annotation box using previously defined function
@@ -106,27 +123,27 @@ def process_image(stem, split):
         print(f"Skipped {stem}; empty mask")  # no label file, so YOLO never sees it as background
         return False
 
-    write_label(os.path.join(output, split, "labels", stem + ".txt"), get_class(stem), box)
+    write_label(os.path.join(output, split, "labels", stem + ".txt"), labels[stem], box)
     shutil.copy2(img_path, os.path.join(output, split, "images", stem + ".jpg"))
     return True
 # ================================================================
 # MAIN
-def build_dataset(assignment):
+def build_dataset():
     """Processes every assigned image and returns per-split counts."""
-    counts = {split: 0 for split in RATIOS}
-    for stem, split in assignment.items():
-        if process_image(stem, split):
-            counts[split] += 1
+    counts = {}
+    for split in SPLITS:
+        paths = SPLIT_DIRS[split]
+        labels = load_labels(paths["csv"])
+        stems = get_stems(paths["imgs"], paths["masks"])
+        print(f"{split}: {len(stems)} image/mask pairs found")
+        counts[split] = sum(process_image(s, split, labels) for s in stems)
     return counts
 
-def main():
-    stems = get_stems(src_imgs, src_masks) # getting the actual stems
-    print(f"{len(stems)} image/mask pairs found") # NOTE: Claude Sonnet 5.0 (Medium)
-    assignment = split_stems(stems, RATIOS) # producing the split
-    make_dirs(output, RATIOS) # producing the directories
-    counts = build_dataset(assignment) # counting 
-    print("Done:", counts) # files now ready for use in YOLO
 
+def main():
+    make_dirs(output, SPLITS)  # producing the directories
+    counts = build_dataset()   # converting and counting
+    print("Done:", counts)     # files now ready for use in YOLO
 
 if __name__ == "__main__":
     main()
