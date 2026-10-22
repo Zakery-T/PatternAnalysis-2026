@@ -1,6 +1,6 @@
 # Following from https://labelformat.com/formats/object-detection/yolov8/
 # Dataset root directory
-path: /home/Student/s4874151/ISIC2018/yolo
+path: "C:/Users/zakts/CODE/comp3710_final/ISIC2017"
 
 # Dataset splits (relative to path)
 train: train/images
@@ -8,8 +8,10 @@ val: val/images
 test: test/images
 
 # Number of classes
-nc: 1
+nc: 3
 
 # Class names mapping
 names:
-0: lesion
+  0: melanoma
+  1: "seborrheic keratosis"
+  2: "nevus"
