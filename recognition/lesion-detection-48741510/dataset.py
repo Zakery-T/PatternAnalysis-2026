@@ -40,7 +40,7 @@ SPLIT_DIRS = {
 
 # other relevant configurations
 CLASS_NAMES =["melanoma", "seborrheic keratosis", "nevus"] # UPDATING DEPENDNING ON ED BOARD RESPONSE
-SPLITS = list(SPLIT_DIRS.keys())
+SPLITS = ["train", "val", "test"]
 MIN_AREA = 50
 
 def get_stems(src_imgs, src_masks):
@@ -59,11 +59,11 @@ def get_stems(src_imgs, src_masks):
 def make_dirs(output, splits):
     """Creates the output/{split}/images and output/{split}/labels directories."""
     for i in splits:
-        os.makedirs(os.path.join(output, i, "images"), exist_ok=True)
+        os.makedirs(os.path.join(output, i, "images"), exist_ok=True) # stops continuous creation of new directories
         os.makedirs(os.path.join(output, i, "labels"), exist_ok=True)
 
 def load_labels(csv_path):
-    """Reads a Part 3 CSV and returns {image_id: class_id}, following CLASS_NAMES order."""
+    """Reads a Part 3 CSV and returns {image_id: class_id}, using CLASS_NAMES ordering."""
     labels = {}
     with open(csv_path, newline="") as f:
         for row in csv.DictReader(f):
