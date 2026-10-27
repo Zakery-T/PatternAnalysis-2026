@@ -1,6 +1,6 @@
 # Following from https://labelformat.com/formats/object-detection/yolov8/
 # Dataset root directory
-path: "C:/Users/zakts/CODE/PatternAnalysis2026/workspace/ISIC2017" # //! Replace with dataset location
+path: "C:/Users/zakts/CODE/PatternAnalysis-2026/workspace/yolo" # //! Replace with dataset location
 
 
 # Dataset splits (relative to path)
