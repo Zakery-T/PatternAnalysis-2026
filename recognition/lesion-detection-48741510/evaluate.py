@@ -17,6 +17,9 @@ from sklearn.metrics import roc_auc_score  # for reporting of values
 
 from modules import load_trained
 
+# configurations
+# from config import WEIGHTS, DATA_DIR, OUT_DIR, CLASS_NAMES, CONF_EVAL, IOU_TARGET, IMG_EXTS, NO_DET
+
 # default paths - PLANNING TO CHANGE THIS TO MAKE MORE ROBUST
 DEFAULT_WEIGHTS = "C:/Users/zakts/CODE/PatternAnalysis-2026/workspace/baseline_YOLOv8n-4/weights/best.pt"
 DEFAULT_DATA = "C:/Users/zakts/CODE/PatternAnalysis-2026/workspace/yolo"

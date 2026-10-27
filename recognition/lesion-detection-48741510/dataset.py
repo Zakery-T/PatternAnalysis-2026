@@ -9,6 +9,9 @@ import csv # standard Python library, for classification labels
 import cv2 # industry-standard for working with visual images
 import numpy as np
 
+# configurations
+# from config import RAW_DIR, DATA_DIR, SPLIT_DIRS, CLASS_NAMES, SPLITS, MIN_AREA, write_data_yaml
+
 
 # //* IN LINE WITH RESEARCH, 3 CORE SECTIONS TO PREPARE DATASET
 # ================================================================
@@ -16,7 +19,7 @@ import numpy as np
 # creating filepaths using os
 my_dir = "C:/Users/zakts/CODE/comp3710_final" # my local directory - didn't do it on Rangpur
 dataset = os.path.join(my_dir, "ISIC2017") # dataset location 
-output = os.path.join (my_dir, "yolo") # output directory
+output = os.path.join (my_dir, "yolo") # output directory = DATA_DIR
 
 # ISIC2017 comes with pre-determined splits (unlike ISIC2018)
 SPLIT_DIRS = {
@@ -143,6 +146,7 @@ def main():
     make_dirs(output, SPLITS)  # producing the directories
     counts = build_dataset()   # converting and counting
     print("Done:", counts)     # files now ready for use in YOLO
+    write_data_yaml()
 
 if __name__ == "__main__":
     main()
