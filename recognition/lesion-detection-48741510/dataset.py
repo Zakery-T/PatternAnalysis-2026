@@ -3,11 +3,12 @@ File for loading and processing of ISIC2017 data. Important due to variable size
 
 NOTE: on 22/10/2026, decided to switch from ISIC2018 --> ISIC2017 data
 """
-import os
+import os # standard Python library, for path making
+import shutil # standard Python library, for copying over file/s
+import csv # standard Python library, for classification labels
 import cv2 # industry-standard for working with visual images
 import numpy as np
-import shutil
-import csv # for classification labels
+
 
 # //* IN LINE WITH RESEARCH, 3 CORE SECTIONS TO PREPARE DATASET
 # ================================================================

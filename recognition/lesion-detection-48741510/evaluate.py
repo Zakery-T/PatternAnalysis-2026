@@ -1,3 +1,5 @@
+# NOTE: Helped written by Claude Sonnet 5.0 (Medium)
+
 """
 evaluate.py: evaluates the trained YOLO model on the ISIC 2017 test split.
 Reports localisation IoU against the task target (>= 0.8), YOLO detection
@@ -7,15 +9,15 @@ sensitivity/specificity/AUC.
 Usage:
     python evaluate.py --weights path/to/best.pt --data path/to/yolo --out eval_out
 """
-import os
-import argparse
+import os # standard Python library
+import argparse # standard Python library
 import cv2
 import numpy as np
 from sklearn.metrics import roc_auc_score  # for reporting of values
 
 from modules import load_trained
 
-# defaults (edit these once for your machine)
+# default paths - PLANNING TO CHANGE THIS TO MAKE MORE ROBUST
 DEFAULT_WEIGHTS = "C:/Users/zakts/CODE/PatternAnalysis-2026/workspace/baseline_YOLOv8n-4/weights/best.pt"
 DEFAULT_DATA = "C:/Users/zakts/CODE/PatternAnalysis-2026/workspace/yolo"
 DEFAULT_YAML = "C:/Users/zakts/CODE/PatternAnalysis-2026/recognition/lesion-detection-48741510/data.yaml"
@@ -111,7 +113,6 @@ def run_predictions(model_current, img_dir, label_dir, device):
     return results, no_detections
 
 
-# NOTE: written with help of Claude Sonnet 5.0 (Medium)
 def compute_iou_metrics(ious, pred):
     """Localisation summary against the IoU target."""
     detected = pred != NO_DET
