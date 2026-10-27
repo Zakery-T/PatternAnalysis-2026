@@ -1,0 +1,8 @@
+# editor settings
+.vscode/
+# Python cache
+__pycache__/
+# Ultralytics training and validation outputs
+runs/
+# local data, datasets and weights workspace
+workspace/
