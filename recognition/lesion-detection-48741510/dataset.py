@@ -9,11 +9,9 @@ import numpy as np
 import shutil
 import csv # for classification labels
 
-# IN LINE WITH RESEARCH, 3 CORE SECTIONS TO PREPARE DATASET
-
+# //* IN LINE WITH RESEARCH, 3 CORE SECTIONS TO PREPARE DATASET
 # ================================================================
 # SECTION 1: SETTING UP PARALLEL DIRECTORIES FOR TRAIN + VAL AND SORTING OF IMAGES
-
 # creating filepaths using os
 my_dir = "C:/Users/zakts/CODE/comp3710_final" # my local directory - didn't do it on Rangpur
 dataset = os.path.join(my_dir, "ISIC2017") # dataset location 
@@ -39,7 +37,7 @@ SPLIT_DIRS = {
 }
 
 # other relevant configurations
-CLASS_NAMES =["melanoma", "seborrheic keratosis", "nevus"] # UPDATING DEPENDNING ON ED BOARD RESPONSE
+CLASS_NAMES =["melanoma", "seborrheic keratosis", "nevus"] #ISIC2017 labels
 SPLITS = ["train", "val", "test"]
 MIN_AREA = 50
 
