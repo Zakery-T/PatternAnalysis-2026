@@ -15,7 +15,7 @@ import csv # for classification labels
 # SECTION 1: SETTING UP PARALLEL DIRECTORIES FOR TRAIN + VAL AND SORTING OF IMAGES
 
 # creating filepaths using os
-my_dir = "C:/Users/zakts/CODE/comp3710_final" # my local directory
+my_dir = "C:/Users/zakts/CODE/comp3710_final" # my local directory - didn't do it on Rangpur
 dataset = os.path.join(my_dir, "ISIC2017") # dataset location 
 output = os.path.join (my_dir, "yolo") # output directory
 
