@@ -4,8 +4,8 @@ It contains all of the CONSTANTS utilised throughout, ensuring the code is robus
 
 Paths are relevant to this file, and paths I personally used for data, sorted data, weights and output are provided. 
 If wanting to use different paths, simply replace paths with location of relevant files.
-
 """
+# NOTE: Structuring and formatting aided by Claude Sonnet 5.0 (Medium), particularly use of pathlib --> Path objects
 import os
 from pathlib import Path # standard Python library, for building paths from a core anchor
 
@@ -15,44 +15,43 @@ PROJECT_DIR = Path(__file__).resolve().parent # parent directory for project/dow
 # Creation of main directories using above-defined function/functionality
 RAW_DIR = Path(PROJECT_DIR / "data" / "ISIC2017")  # raw downloaded ISIC2017 folders
 DATA_DIR = Path(PROJECT_DIR / "data" / "yolo")    # dataset.py output - raw ISIC data now sorted into splits
-WEIGHTS = Path(PROJECT_DIR / "weights" / "best.pt")
-OUT_DIR = Path(PROJECT_DIR / "outputs")
+WEIGHTS = Path(PROJECT_DIR / "weights" / "best.pt") # weights of currently best trained model - taken following Rangpur training
+OUT_DIR = Path(PROJECT_DIR / "outputs") # saved output folder
 
-# ISIC2017 raw data split names
+# ISIC2017 raw data split names - provided by dataset itself
 SPLITS = ["train", "val", "test"]
 _ISIC_NAMES = {"train": "Training", "val": "Validation", "test": "Test_v2"}
-
 SPLIT_DIRS = {
-    s: {
+s: {
         "imgs":  RAW_DIR / f"ISIC-2017_{n}_Data",
         "masks": RAW_DIR / f"ISIC-2017_{n}_Part1_GroundTruth",
-        "csv":   RAW_DIR / f"ISIC-2017_{n}_Part3_GroundTruth.csv",
+        "csv":   RAW_DIR / f"ISIC-2017_{n}_Part3_GroundTruth.csv", # general file names of ISIC2017 download
     }
     for s, n in _ISIC_NAMES.items()
 }
-
 # Classes as part of ISIC2017 dataset
 CLASS_NAMES = ["melanoma", "seborrheic keratosis", "nevus"]
 
-# For dataset.py - allows for ignoring of smaller resolution images, treated instead as simply noise
+# For dataset.py - allows for ignoring of small resolution, treated instead as simply noise
 MIN_AREA = 50
 
 # For modules.py and train.py - training parameters
-BASE_MODEL = "yolov8n.pt" # default pre-trained YOLO model from ultralytics
-IMGSZ = 1024                # training size; evaluate.py reads the size from the weights by default
+PROJECT_NAME = "imgsz1024" # NOTE: change this name depending on what you want output saved as
+BASE_MODEL = "yolov8n.pt" # default pre-trained YOLO model, imported from ultralytics
+IMGSZ = 1024
 EPOCHS = 50
 BATCH = 16
-WORKERS = 1                # Rangpur recommendation
-SEED = 0                   # For repeatability
+WORKERS = 1 # Rangpur recommendation
+SEED = 0 # For repeatability
 
 # For evaluation.py and predict.py
-CONF_EVAL = 0.001   # low, so scores are kept for AUC
+CONF_EVAL = 0.001   # low, so scores are kept for AUC (ie. how well model distinguises between classes)
 CONF_DEMO = 0.25    # display threshold for predict.py
-IOU_TARGET = 0.8    # task target: test IoU >= 0.8
+IOU_TARGET = 0.8    # task target: test IoU >= 0.8 for this application
 IMG_EXTS = (".jpg", ".jpeg", ".png") # image extensions, ensures other non-relevant files ignored
 NO_DET = -1         # no (lesion) detection
 
-# NOTE: recommended by Claude SOnnet 5.0 (Medium)
+# NOTE: written by Claude SOnnet 5.0 (Medium)
 def write_data_yaml(data_dir=None, path=None):
     """Writes a YOLO data yaml for data_dir (default DATA_DIR), so it can never go stale.
     Written to `path` (default: data_dir/data.yaml). Returns the yaml path as a string."""
