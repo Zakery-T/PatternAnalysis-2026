@@ -6,3 +6,7 @@ __pycache__/
 runs/
 # local data, datasets and weights workspace
 workspace/
+# other files generated as part of training/evaluation
+data/
+outputs/
+weights/
