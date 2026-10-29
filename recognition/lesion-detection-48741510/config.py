@@ -35,11 +35,11 @@ SPLIT_DIRS = {
 CLASS_NAMES = ["melanoma", "seborrheic keratosis", "nevus"]
 
 # For dataset.py - allows for ignoring of smaller resolution images, treated instead as simply noise
-\
+MIN_AREA = 50
 
 # For modules.py and train.py - training parameters
-BASE_MODEL = "yolov8n.pt"  
-IMGSZ = 640                # training size; evaluate.py reads the size from the weights by default
+BASE_MODEL = "yolov8n.pt" # default pre-trained YOLO model from ultralytics
+IMGSZ = 1024                # training size; evaluate.py reads the size from the weights by default
 EPOCHS = 50
 BATCH = 16
 WORKERS = 1                # Rangpur recommendation
@@ -53,12 +53,15 @@ IMG_EXTS = (".jpg", ".jpeg", ".png") # image extensions, ensures other non-relev
 NO_DET = -1         # no (lesion) detection
 
 # NOTE: recommended by Claude SOnnet 5.0 (Medium)
-def write_data_yaml(path=None):
-    """Writes data.yaml pointing at DATA_DIR, so it can never go stale - no manual definition required"""
-    path = Path(path) if path else DATA_DIR / "data.yaml"
+def write_data_yaml(data_dir=None, path=None):
+    """Writes a YOLO data yaml for data_dir (default DATA_DIR), so it can never go stale.
+    Written to `path` (default: data_dir/data.yaml). Returns the yaml path as a string."""
+    data_dir = Path(data_dir) if data_dir else DATA_DIR
+    path = Path(path) if path else data_dir / "data.yaml"
+    path.parent.mkdir(parents=True, exist_ok=True)
     names = "\n".join(f"  {i}: {n}" for i, n in enumerate(CLASS_NAMES))
     path.write_text(
-        f"path: {DATA_DIR.as_posix()}\n"
+        f"path: {data_dir.resolve().as_posix()}\n"
         "train: train/images\nval: val/images\ntest: test/images\n"
         f"nc: {len(CLASS_NAMES)}\nnames:\n{names}\n")
-    return path
+    return str(path)

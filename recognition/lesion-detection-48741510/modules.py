@@ -5,12 +5,7 @@ from ultralytics import YOLO
 def load_initial_model(weights = "yolov8n.pt"):
     """
     Loading of YOLOv8 model from ulralytics (in partciular yolov8n)
-
-    Args:
-        Weights (simply using pre-determined model)
-
-    Returns:
-        YOLOv8 model pre-trained on COCO dataset
+    --> weights pre-determined, pre-trained on COCO dataset
     """
     return YOLO(weights)
 

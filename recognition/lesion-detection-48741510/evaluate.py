@@ -14,25 +14,11 @@ import argparse # standard Python library
 import cv2
 import numpy as np
 from sklearn.metrics import roc_auc_score  # for reporting of values
+from pathlib import Path
 
 from modules import load_trained
-
 # configurations
-# from config import WEIGHTS, DATA_DIR, OUT_DIR, CLASS_NAMES, CONF_EVAL, IOU_TARGET, IMG_EXTS, NO_DET
-
-# default paths - PLANNING TO CHANGE THIS TO MAKE MORE ROBUST
-DEFAULT_WEIGHTS = "C:/Users/zakts/CODE/PatternAnalysis-2026/workspace/baseline_YOLOv8n-4/weights/best.pt"
-DEFAULT_DATA = "C:/Users/zakts/CODE/PatternAnalysis-2026/workspace/yolo"
-DEFAULT_YAML = "C:/Users/zakts/CODE/PatternAnalysis-2026/recognition/lesion-detection-48741510/data.yaml"
-DEFAULT_OUT = "eval_out"
-
-# constants
-CLASS_NAMES = ["melanoma", "seborrheic keratosis", "nevus"]
-CONF_THRESHOLD = 0.001  # low, so scores are kept for AUC
-IMGSZ = 640             # must match train.py
-IOU_TARGET = 0.8        # task target: test IoU >= 0.8
-IMG_EXTS = (".jpg", ".jpeg", ".png")  # extensions/tags
-NO_DET = -1             # "no detection" case
+from config import WEIGHTS, DATA_DIR, OUT_DIR, CLASS_NAMES, CONF_EVAL, IOU_TARGET, IMG_EXTS, NO_DET, IMGSZ, write_data_yaml
 
 
 def get_image_paths(split_dir):
@@ -54,7 +40,7 @@ def read_true_box(label_path):
 
 def predict_image(model_current, img_path, device):
     """Returns all detections for one image as (class_id, conf, (cx, cy, w, h))."""
-    results = model_current.predict(img_path, imgsz=IMGSZ, conf=CONF_THRESHOLD,
+    results = model_current.predict(img_path, imgsz=IMGSZ, conf=CONF_EVAL,
                                     device=device, verbose=False)[0]  # [0] as single image
     detections = []  # class_id, conf score, box coordinates
     for b in results.boxes:  # boxes = holds all detections for one image
@@ -91,6 +77,28 @@ def box_iou(box_a, box_b):
     union = box_a[2] * box_a[3] + box_b[2] * box_b[3] - inter
     return inter / union if union > 0 else 0.0
 
+def scale_box(box, sw, sh):
+    """Scales a normalised (cx, cy, w, h) box about its centre, clipped to the image."""
+    cx, cy, w, h = box
+    w, h = w * sw, h * sh
+    x1, x2 = max(0.0, cx - w / 2), min(1.0, cx + w / 2)
+    y1, y2 = max(0.0, cy - h / 2), min(1.0, cy + h / 2)
+    return ((x1 + x2) / 2, (y1 + y2) / 2, x2 - x1, y2 - y1)
+
+
+def fit_scale(pred_boxes, true_boxes):
+    """Grid-searches width/height factors that maximise mean IoU (misses count as 0).
+    Run on VAL only, then pass the result to the test run with --scale."""
+    def mean_iou(sw, sh):
+        return np.mean([0.0 if p is None else box_iou(scale_box(p, sw, sh), t)
+                        for p, t in zip(pred_boxes, true_boxes)])
+    grid = np.arange(0.90, 1.301, 0.02)
+    best = max((mean_iou(sw, sh), sw, sh) for sw in grid for sh in grid)
+    print("\n=== Box scale fit (use these on test via --scale) ===")
+    print(f"No scaling: mean IoU {mean_iou(1.0, 1.0):.3f}")
+    print(f"Best: width x{best[1]:.2f}, height x{best[2]:.2f}, mean IoU {best[0]:.3f}")
+    print(f"Run on test with: --scale {best[1]:.2f} {best[2]:.2f}")
+
 def run_predictions(model_current, img_dir, label_dir, device):
     """Predicts every image; stores true class, predicted class, scores and IoU."""
     image_paths = get_image_paths(img_dir)
@@ -100,21 +108,22 @@ def run_predictions(model_current, img_dir, label_dir, device):
         stem = os.path.splitext(os.path.basename(img_path))[0]
         label_path = os.path.join(label_dir, stem + ".txt")
         true_class = read_true_class(label_path)
-        detections = predict_image(model_current, img_path, device)
+        true_box = read_true_box(label_path)  # read once, reused below
+        detections = predict_image(model_current, img_path, device)  # keep your current argument list
 
-        prediction = select_prediction(detections)
+        prediction = select_prediction(detections)  # or select_prediction(detections)
         if prediction is None:
-            pred_class = NO_DET
-            iou = 0.0  # miss counts as zero overlap
+            pred_class, pred_box = NO_DET, None
+            iou, best_iou = 0.0, 0.0
             no_detections += 1
         else:
-            pred_class = prediction[0]
-            iou = box_iou(prediction[2], read_true_box(label_path))
+            pred_class, pred_box = prediction[0], prediction[2]
+            iou = box_iou(pred_box, true_box)
+            best_iou = max(box_iou(d[2], true_box) for d in detections)
 
         scores = class_scores(detections)
-        results.append((true_class, pred_class, scores, iou))
+        results.append((true_class, pred_class, scores, iou, best_iou, pred_box, true_box))
     return results, no_detections
-
 
 def compute_iou_metrics(ious, pred):
     """Localisation summary against the IoU target."""
@@ -128,10 +137,10 @@ def compute_iou_metrics(ious, pred):
         "n_detected": int(detected.sum()),
     }
 
-def compute_map(model, data_yaml, device, out_dir):
+def compute_map(model, data_yaml, device, out_dir, split):
     """YOLO's own detection metrics on the test split (Ultralytics validation).
     Returns overall and per-class mAP50, mAP50-95, P, R, plus AP at IoU 0.8."""
-    m = model.val(data=data_yaml, split="test", imgsz=IMGSZ, device=device,
+    m = model.val(data=data_yaml, split=split, imgsz=IMGSZ, device=device,
                   workers=0, project=out_dir, name="yolo_val", exist_ok=True,
                   verbose=False)
     box = m.box
@@ -187,29 +196,80 @@ def save_visualisations(model, image_paths, out_dir, device):
                                device=device, verbose=False)[0]
         cv2.imwrite(os.path.join(out_dir, os.path.basename(img_path)), result.plot())
 
+def save_worst_overlays(image_paths, ious, pred_boxes, true_boxes, out_dir, n=20):
+    """Step 1: saves the n lowest-IoU test images with the true box (green) and predicted box (red)."""
+    os.makedirs(out_dir, exist_ok=True)
+    for rank, idx in enumerate(np.argsort(ious)[:n]):
+        img = cv2.imread(image_paths[idx])
+        scale = 900 / max(img.shape[:2])          # shrink very large images
+        img = cv2.resize(img, None, fx=scale, fy=scale)
+        h, w = img.shape[:2]
+
+        def draw(box, colour):
+            cx, cy, bw, bh = box
+            p1 = (int((cx - bw / 2) * w), int((cy - bh / 2) * h))
+            p2 = (int((cx + bw / 2) * w), int((cy + bh / 2) * h))
+            cv2.rectangle(img, p1, p2, colour, 3)
+
+        draw(true_boxes[idx], (0, 255, 0))        # true (mask-derived): green
+        if pred_boxes[idx] is not None:
+            draw(pred_boxes[idx], (0, 0, 255))    # predicted: red
+        cv2.putText(img, f"IoU {ious[idx]:.2f}", (10, 40),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)
+        name = os.path.basename(image_paths[idx])
+        cv2.imwrite(os.path.join(out_dir, f"{rank:02d}_{name}"), img)
+
+
+def bias_report(pred_boxes, true_boxes):
+    """Step 2: signed prediction-minus-truth errors. A mean far from 0 suggests systematic bias;
+    a mean near 0 with a large spread suggests random error (a regression limit)."""
+    pairs = [(p, t) for p, t in zip(pred_boxes, true_boxes) if p is not None]
+    p = np.array([x[0] for x in pairs])
+    t = np.array([x[1] for x in pairs])
+    print("\n=== Box bias (predicted minus true, normalised units) ===")
+    for i, name in enumerate(["centre x", "centre y", "width", "height"]):
+        d = p[:, i] - t[:, i]
+        print(f"{name}: mean {d.mean():+.4f}, std {d.std():.4f}, mean abs {np.abs(d).mean():.4f}")
+    ratio = (p[:, 2] * p[:, 3]) / (t[:, 2] * t[:, 3])
+    print(f"Predicted/true box area: median {np.median(ratio):.3f}, "
+          f"larger than true in {np.mean(ratio > 1):.1%} of images")
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--weights", default=DEFAULT_WEIGHTS, help="path to best.pt")
-    parser.add_argument("--data", default=DEFAULT_DATA, help="dataset folder from dataset.py")
-    parser.add_argument("--yaml", default=DEFAULT_YAML, help="data.yaml path")
-    parser.add_argument("--out", default=DEFAULT_OUT, help="output folder")
+    parser.add_argument("--weights", default=WEIGHTS, help="path to best.pt")
+    parser.add_argument("--data", default=DATA_DIR, help="dataset folder from dataset.py")
+    parser.add_argument("--out", default=OUT_DIR, help="output folder")
     parser.add_argument("--device", default="cpu", help="'cpu' or GPU index, e.g. 0")
     parser.add_argument("--no-map", action="store_true", help="skip the YOLO mAP step")
+    parser.add_argument("--diagnose", action="store_true", help="save worst-IoU overlays and print box bias")
+    parser.add_argument("--split", default="test", help="split to evaluate: val or test")
+    parser.add_argument("--scale", nargs=2, type=float, default=[1.0, 1.0],
+                        metavar=("W", "H"), help="width/height factor for predicted boxes")
+    parser.add_argument("--fit-scale", action="store_true", help="fit scale factors (use on val)")
     args = parser.parse_args()
     device = int(args.device) if args.device.isdigit() else args.device
 
-    img_dir = os.path.join(args.data, "test", "images")  # TEST split
-    label_dir = os.path.join(args.data, "test", "labels")
-    data_yaml = args.yaml or os.path.join(args.data, "data.yaml")
+    # img_dir = os.path.join(args.data, "test", "images")  # TEST split
+    # label_dir = os.path.join(args.data, "test", "labels")
+    img_dir = os.path.join(args.data, args.split, "images")
+    label_dir = os.path.join(args.data, args.split, "labels")
+    data_yaml = write_data_yaml(args.data, Path(args.out) / "data_eval.yaml")
 
     model = load_trained(args.weights)  # loading of trained model
     results, no_det = run_predictions(model, img_dir, label_dir, device)
     print(f"No detection: {no_det}/{len(results)}")
 
-    true, pred, scores, ious = zip(*results)
+    true, pred, scores, ious, best_ious, pred_boxes, true_boxes = zip(*results)
     true, pred = np.array(true), np.array(pred)
-    scores, ious = np.array(scores), np.array(ious)
+    scores, ious, best_ious = np.array(scores), np.array(ious), np.array(best_ious)
+    if args.fit_scale:
+        fit_scale(pred_boxes, true_boxes)
+    sw, sh = args.scale
+    if (sw, sh) != (1.0, 1.0):
+        pred_boxes = tuple(None if p is None else scale_box(p, sw, sh) for p in pred_boxes)
+        ious = np.array([0.0 if p is None else box_iou(p, t)
+                         for p, t in zip(pred_boxes, true_boxes)])
+        print(f"\nApplied box scale: width x{sw:.2f}, height x{sh:.2f}")
 
     # --- localisation: task target ---
     iou = compute_iou_metrics(ious, pred)
@@ -219,10 +279,11 @@ def main():
     print(f"Images with IoU > 0.5: {iou['share_gt_0.5']:.1%}")
     print(f"Images with IoU >= {IOU_TARGET}: {iou['share_at_target']:.1%}")
     print(f"Target (mean IoU >= {IOU_TARGET}) met: {iou['mean_all'] >= IOU_TARGET}")
-
+    print(f"Mean IoU, best detection per image: {best_ious.mean():.3f}")
+    print(f"Split evaluated: {args.split}")
     # --- detection metrics (Ultralytics) ---
     if not args.no_map:
-        det = compute_map(model, data_yaml, device, args.out)
+        det = compute_map(model, data_yaml, device, args.out, args.split)
         print("\n=== Detection metrics (Ultralytics val, test split) ===")
         print(f"Overall: mAP50 {det['map50']:.3f}, mAP50-95 {det['map']:.3f}, "
               f"P {det['p']:.3f}, R {det['r']:.3f}")
@@ -242,8 +303,14 @@ def main():
     sens, spec, auc = compute_melanoma_metrics(true, pred, scores)
     print(f"Melanoma vs rest: sensitivity {sens:.3f}, specificity {spec:.3f}, AUC {auc:.3f}")
 
+    image_paths = get_image_paths(img_dir)
+    if args.diagnose:
+        bias_report(pred_boxes, true_boxes)
+        save_worst_overlays(image_paths, ious, pred_boxes, true_boxes,
+                            os.path.join(args.out, "worst_iou"))
+        print(f"Worst-IoU overlays saved to {os.path.join(args.out, 'worst_iou')}")
     # --- example images: up to 10 failures and 10 correct ---
-    image_paths = get_image_paths(img_dir)  # same order as run_predictions
+    # image_paths = get_image_paths(img_dir)  # same order as run_predictions
     wrong = [p for p, t, q in zip(image_paths, true, pred) if t != q][:10]
     right = [p for p, t, q in zip(image_paths, true, pred) if t == q][:10]
     save_visualisations(model, wrong + right, os.path.join(args.out, "examples"), device)

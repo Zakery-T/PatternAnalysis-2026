@@ -10,7 +10,7 @@ import cv2 # industry-standard for working with visual images
 import numpy as np
 
 # configurations
-# from config import RAW_DIR, DATA_DIR, SPLIT_DIRS, CLASS_NAMES, SPLITS, MIN_AREA, write_data_yaml
+from config import RAW_DIR, DATA_DIR, SPLIT_DIRS, CLASS_NAMES, SPLITS, MIN_AREA, write_data_yaml
 
 
 # //* IN LINE WITH RESEARCH, 3 CORE SECTIONS TO PREPARE DATASET
@@ -19,31 +19,7 @@ import numpy as np
 # creating filepaths using os
 my_dir = "C:/Users/zakts/CODE/comp3710_final" # my local directory - didn't do it on Rangpur
 dataset = os.path.join(my_dir, "ISIC2017") # dataset location 
-output = os.path.join (my_dir, "yolo") # output directory = DATA_DIR
-
-# ISIC2017 comes with pre-determined splits (unlike ISIC2018)
-SPLIT_DIRS = {
-    "train": {
-        "imgs":  os.path.join(dataset, "ISIC-2017_Training_Data"),
-        "masks": os.path.join(dataset, "ISIC-2017_Training_Part1_GroundTruth"),
-        "csv":   os.path.join(dataset, "ISIC-2017_Training_Part3_GroundTruth.csv"),
-    },
-    "val": {
-        "imgs":  os.path.join(dataset, "ISIC-2017_Validation_Data"),
-        "masks": os.path.join(dataset, "ISIC-2017_Validation_Part1_GroundTruth"),
-        "csv":   os.path.join(dataset, "ISIC-2017_Validation_Part3_GroundTruth.csv"),
-    },
-    "test": {
-        "imgs":  os.path.join(dataset, "ISIC-2017_Test_v2_Data"),
-        "masks": os.path.join(dataset, "ISIC-2017_Test_v2_Part1_GroundTruth"),
-        "csv":   os.path.join(dataset, "ISIC-2017_Test_v2_Part3_GroundTruth.csv"),
-    },
-}
-
-# other relevant configurations
-CLASS_NAMES =["melanoma", "seborrheic keratosis", "nevus"] #ISIC2017 labels
-SPLITS = ["train", "val", "test"]
-MIN_AREA = 50
+output = DATA_DIR # output directory
 
 def get_stems(src_imgs, src_masks):
     """Retrieves the stem for each image and corresponding mask ie. its image ID."""
