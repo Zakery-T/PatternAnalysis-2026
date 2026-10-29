@@ -19,13 +19,19 @@ In general, "every Ultralytics YOLO model is built from three stages: a backbone
 Evolving from YOLOv5, major architectural differences between YOLOv8 and its predecessors include an achor-free detection head, which "simplifies the training process by removing the need to manually configure anchor boxes [per dataset]", a C2f module, which "improves gradient flow and allowed the model to learn richer feature representations without a significant increase in computational cost" and a decoupled head structure, which seperates classification and regression and has been shown to improve convergence speed and accuracy (https://docs.ultralytics.com/compare/yolov8-vs-yolov5). 
 
 # Feasability Report
-*Please note that major changes have occurred since this feasbility report, in particular the use of ISIC2018 to ISIC2017. I went to tutors for help with this via EdBoard, however they were unable to provide me sufficient information to get ISIC2018 up and running. As such, made the change to ISIC2017 due to its inclusion in Rangpur already.*
+*Please note that major changes have occurred since this feasability report, in particular the use of ISIC2018 to ISIC2017. I went to tutors for help with this via EdBoard, however they were unable to provide me sufficient information to get ISIC2018 up and running. As such, made the change to ISIC2017 due to its inclusion in Rangpur already.*
 
 The feasability report completed for this project is attached via this [link](<lesion-detection-48741510/SupportingImages/Feasability Report.pdf>).
 
 # Dependencies
+Dependencies required for this project are included within *requirements.txt*. Note that *ultralytics* is built on top of PyTorch, and thus installing this package will install the necessary modules for this functionality.
 
 # Example
+Examples of an output image for *evaluate.py* is attached below. Other images generated include plots and curves, which will be discussed further in **Investigation of the Open Research Dilemma**.
+![alt text](lesion-detection-48741510/outputs/yolo_val/val_batch1_pred.jpg)
+
+Examples of an output for a single image prediction for *predict.py* is attached below.
+![alt text](lesion-detection-48741510/outputs/predict/lesion_predictions/ISIC_0015963.jpg)
 
 # Data Pre-Procesing
 ## Pre-Processing Images for YOLO compatibility
