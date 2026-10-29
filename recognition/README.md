@@ -21,8 +21,7 @@ Evolving from YOLOv5, major architectural differences between YOLOv8 and its pre
 # Feasability Report
 *Please note that major changes have occurred since this feasbility report, in particular the use of ISIC2018 to ISIC2017. I went to tutors for help with this via EdBoard, however they were unable to provide me sufficient information to get ISIC2018 up and running. As such, made the change to ISIC2017 due to its inclusion in Rangpur already.*
 
-The feasability report completed for this project is attached below.
-[text](<lesion-detection-48741510/SupportingImages/Feasability Report.pdf>)
+The feasability report completed for this project is attached via this [link](<lesion-detection-48741510/SupportingImages/Feasability Report.pdf>).
 
 # Dependencies
 
