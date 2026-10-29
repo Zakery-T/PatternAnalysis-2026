@@ -60,9 +60,54 @@ In order to reproduce the results obtained within this repository, follow the be
 Using the files as configured within the repository, the results obtained were Test Mean IoU approx 0.755, accuracy approx 0.757
 
 # Investigation of the Open Research Dilemma
+## Quantitative Benchmarking
+The baseline model utilised to test YOLOv8 performance against was YOLOv3, in particular "yolov3-tinyu.pt" weights as included within the Ultralytics package. For the implemented model, a pre-trained YOLOv8 model (pre-trained on COCO dataset)
+The final models configuration that I used for this report can be found in config.py. Its e results can also be found in results.txt, all of which are based on the ISIC2017 test split (600 images). IoU is the top-confidence predicted box against the mask-derived box. 
+
+
+As outlined above, the target mean IoU of > 0.8 was unable to be met. This was despite extensive experimentation on the YOLOv8 configuration, which are as outlined below.
+
+
+The baseline model implemented was YOLOv8n with weights trained on the COCO dataset. This was loaded into the codebase via the ultralytics package and *load_initial_model* as part of *modules.py*. This utilized the default ultralytics settings. In comparison, the mode utilized within this repository posseessed almost the exact same architecure apart from image size, whereby the initial mode possessed 640 and the chosen model possessed 1024.
 
 
 
+Final performance results are outlined below.![alt text](../runs/imgsz1024_baseline/results.png)
+
+The target IoU of 0.8 was unable to be achieved despite numerous attempts to rectify this.
+| # | Modification | Type | Change tested | Test mean IoU | IoU ≥ 0.8 | Outcome |
+|---|---|---|---|---|---|---|
+| 0 | Baseline YOLOv8 | Training | Default config, 640 px, 50 epochs | 0.750 | 51.7% | Reference |
+| 1 | Larger image size | Training | 640 → 1024 px | 0.755 | 52.5% | Marginal IoU gain (+0.005). Clear classification gain (accuracy 0.718 → 0.757, melanoma sensitivity 0.368 → 0.547) |
+| 2 | Longer training | Training | Increased epochs | No gain | n/a | No improvement |
+| 3 | Box merging | Post-processing | Confidence-weighted average of boxes overlapping the top box | 0.758 | 53.3% | No meaningful change (within run-to-run variation) |
+| 4 | Oracle best-box diagnostic | Diagnostic | Best candidate box per image, chosen using ground truth | 0.803 | 58.3% | Upper bound only, not an achievable result. Shows ≤ 0.05 headroom from box selection |
+| 5 | Box shape diagnosis | Diagnostic | Bias report (predicted minus true) | n/a | n/a | Boxes well centred, but median predicted/true area ratio 0.84. Width and height errors are large and bidirectional |
+| 6 | Filtered mask labels | Dataset | Ignore mask fragments < 15% of the largest region | Unchanged | Unchanged | 58 of 2750 images had multiple regions, 177 fragments ignored. No measurable effect |
+| 7 | Box scale calibration | Post-processing | Width and height ×1.02, fitted on val | 0.771 | 57.8% | +0.016 gain, but still below 0.8. Not retained in the final code |
+| 8 | Consensus box selection | Post-processing | Confidence-weighted consensus box, `min_conf` = 0.1 (chosen on val) | 0.755 | 52.5% | Val improved (0.784 → 0.797) but test did not (0.755 → 0.755). Likely val noise |
+| 9 | Larger model | Training | About 3.5× parameters (11.1M vs 3.1M), 1024 px, default augmentation | 0.755 | 53.0% | IoU unchanged. Classification worsened (accuracy 0.693, melanoma sensitivity 0.444, mAP50 0.505). Model size and augmentation changed together, so effects are confounded |
+
+## Modifications attempted to improve IoU
+
+
+| # | Modification | Type | Change tested | Test mean IoU | IoU ≥ 0.8 | Outcome |
+|---|---|---|---|---|---|---|
+| 0 | Baseline YOLOv8 | Training | Default config, 640 px, 50 epochs | 0.750 | 51.7% | Reference |
+| 1 | Larger image size | Training | 640 → 1024 px | 0.755 | 52.5% | Marginal IoU gain (+0.005). Clear classification gain (accuracy 0.718 → 0.757, melanoma sensitivity 0.368 → 0.547) |
+| 2 | Longer training | Training | Increased epochs | No gain | n/a | No improvement |
+| 3 | Box merging | Post-processing | Confidence-weighted average of boxes overlapping the top box | 0.758 | 53.3% | No meaningful change (within run-to-run variation) |
+| 4 | Oracle best-box diagnostic | Diagnostic | Best candidate box per image, chosen using ground truth | 0.803 | 58.3% | Upper bound only, not an achievable result. Shows ≤ 0.05 headroom from box selection |
+| 5 | Box shape diagnosis | Diagnostic | Bias report (predicted minus true) | n/a | n/a | Boxes well centred, but median predicted/true area ratio 0.84. Width and height errors are large and bidirectional |
+| 6 | Filtered mask labels | Dataset | Ignore mask fragments < 15% of the largest region | Unchanged | Unchanged | 58 of 2750 images had multiple regions, 177 fragments ignored. No measurable effect |
+| 7 | Box scale calibration | Post-processing | Width and height ×1.02, fitted on val | 0.771 | 57.8% | +0.016 gain, but still below 0.8. Not retained in the final code |
+| 8 | Consensus box selection | Post-processing | Confidence-weighted consensus box, `min_conf` = 0.1 (chosen on val) | 0.755 | 52.5% | Val improved (0.784 → 0.797) but test did not (0.755 → 0.755). Likely val noise |
+| 9 | Larger model | Training | About 3.5× parameters (11.1M vs 3.1M), 1024 px, default augmentation | 0.755 | 53.0% | IoU unchanged. Classification worsened (accuracy 0.693, melanoma sensitivity 0.444, mAP50 0.505). Model size and augmentation changed together, so effects are confounded |
+
+**Notes**
+- Rows 3, 7 and 8 are inference-time post-processing, not model improvements. Their settings were chosen on val and applied once to test.
+- Rows 4 and 5 are diagnostics, not attempted fixes.
+- Differences of about 0.005 fall within the run-to-run variation seen across repeated evaluations of the same weights (0.755 to 0.759), so treat them as equal.
 
 
 
