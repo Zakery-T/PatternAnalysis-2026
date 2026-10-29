@@ -26,7 +26,7 @@ The feasability report completed for this project is attached via this [link](<l
 # Dependencies
 Dependencies required for this project are included within *requirements.txt*. Note that *ultralytics* is built on top of PyTorch, and thus installing this package will install the necessary modules for this functionality.
 
-# Example
+# Examples
 Examples of an output image for *evaluate.py* is attached below. Other images generated include plots and curves, which will be discussed further in **Investigation of the Open Research Dilemma**.
 ![alt text](lesion-detection-48741510/Supporting/val_batch1_pred.jpg)
 

@@ -278,6 +278,7 @@ def main():
             print(f"{name}: P {m['P']:.3f}, R {m['R']:.3f}, "
                   f"mAP50 {m['mAP50']:.3f}, mAP50-95 {m['mAP50-95']:.3f}")
 
+
     # NOTE: Claude Sonnet 5.0 (Medium)
     # --- classification ---
     matrix = compute_confusion_matrix(true, pred)
@@ -296,8 +297,8 @@ def main():
         save_worst_overlays(image_paths, ious, pred_boxes, true_boxes,
                             os.path.join(args.out, "worst_iou"))
         print(f"Worst-IoU overlays saved to {os.path.join(args.out, 'worst_iou')}")
-    # --- example images: up to 10 failures and 10 correct ---
-    # image_paths = get_image_paths(img_dir)  # same order as run_predictions
+    
+    # example images: up to 10 failures and 10 correct for failure analysis--> produces outputs/examples/...
     wrong = [p for p, t, q in zip(image_paths, true, pred) if t != q][:10]
     right = [p for p, t, q in zip(image_paths, true, pred) if t == q][:10]
     save_visualisations(model, wrong + right, os.path.join(args.out, "examples"), device)
