@@ -14,55 +14,15 @@ YOLO (You Only Look Once) models are a family of object detection models. They c
 
 General YOLO models significantly improved runtimes and thus efficiency by drifting from the traditional CNN multi-stage detection methods to the aforementioned single-pass methodology. While earlier models did initially struggle with maintaininng accuracy of their predictions, the various iterations the family has gone through (all the way up to YOLOv26 as of Oct 2026) has acted to rectify this issue, with models such as YOLOv8 able to maintain accuracy while also greatly improving runtimes (https://arxiv.org/pdf/2208.00773).
 
-In general, "every Ultralytics YOLO model is built from three stages: a backbone that extracts features, a neck that fuses them across scales, and a head that predicts boxes and classes" (https://docs.ultralytics.com/guides/yolo-architecture). The fundamental unit for these models is the Conv block (2D convolution, bacth normalization, SiLU activation). YOLOv8 is simply a version of YOLO. Its core structure can be found here https://docs.ultralytics.com/guides/yolo-architecture, and a diagram is included within the repository (developed by GitHub user RangeKing)<img src="lesion-detection-48741510/SupportingImages/YOLOv8 Architecture Diagram (RangeKing).jpg" width="600">. Evolving from YOLOv5, major architectural differences between YOLOv8 and its predecessors include an achor-free detection head, which "simplifies the training process by removing the need to manually configure anchor boxes [per dataset]", a C2f module, which "improves gradient flow and allowed the model to learn richer feature representations without a significant increase in computational cost" and a decoupled head structure, which seperates classification and regression and has been shown to improve convergence speed and accuracy (https://docs.ultralytics.com/compare/yolov8-vs-yolov5). 
+In general, "every Ultralytics YOLO model is built from three stages: a backbone that extracts features, a neck that fuses them across scales, and a head that predicts boxes and classes" (https://docs.ultralytics.com/guides/yolo-architecture). The fundamental unit for these models is the Conv block (2D convolution, bacth normalization, SiLU activation). YOLOv8 is simply a version of YOLO. Its core structure can be found here https://docs.ultralytics.com/guides/yolo-architecture, and a diagram is included within the repository (developed by GitHub user RangeKing)<img src="lesion-detection-48741510/SupportingImages/YOLOv8 Architecture Diagram (RangeKing).jpg" width="600">. 
+
+Evolving from YOLOv5, major architectural differences between YOLOv8 and its predecessors include an achor-free detection head, which "simplifies the training process by removing the need to manually configure anchor boxes [per dataset]", a C2f module, which "improves gradient flow and allowed the model to learn richer feature representations without a significant increase in computational cost" and a decoupled head structure, which seperates classification and regression and has been shown to improve convergence speed and accuracy (https://docs.ultralytics.com/compare/yolov8-vs-yolov5). 
 
 # Feasability Report
 *Please note that major changes have occurred since this feasbility report, in particular the use of ISIC2018 to ISIC2017. I went to tutors for help with this via EdBoard, however they were unable to provide me sufficient information to get ISIC2018 up and running. As such, made the change to ISIC2017 due to its inclusion in Rangpur already.*
 
-**Malignancy Identification in ISIC2018 using YOLOv8 Architecture**
-INTENDED USER: Dermatologists, GPs conducting primary dermatological screening
-MODEL PURPOSE: Classification of skin lesions for malignancy detection, balancing high clinical sensitivity versus false positive detection/s (The Engineering Dilemma).
-
-MODEL ACCEPTANCE CRITERIA
-CRITERIA	ACCEPTANCE	JUSTIFICATION
-mAPval, 50-95	>40%	Due to high irregularity between lesions, and due to the implications of false negatives over false positives as spoken about within the open  ilemma, a >40% mAP (high performance) was deemed necessary. Furthermore, the COCO dataset, current YOLOv8 models achieve between 37.3% to 53.9% during validation, scaling with model size (Jocher & Derrenger, 2025). As ISIC datasets are a more difficult dataset to categorize due to greater fine detail required, and as computational limits will be highly relevant to this task, target was deemed as realistic. 
-Runtime	>4ms	ISIC 2018 dataset contains 11,527 total images (ISIC, 2018). Limited computational resources available means relatively fast runtimes/image required in order to minimise overall model runtimes. Current YOLOv8 models speed on similar A100s take 0.99ms to 3.53ms/per image depending on model size. Once ISIC 2018 images rescaled to similar 640x640 size, runtime should closely mirror these. In practical applications runtime important due to likely high clinical workload. Thus, target deemed as realistic.
-F1 Score	>0.80	F1 acts to balance both precision and recall (Jocher, et al., 2023), which is important due to open dilemma between managing false positives (clinical overload) vs false negatives (potentially fatal consequences). Other models trained on the ISIC 2018 dataset generally sit between 0.75 to 0.85 F1 score (Saeed, et al., 2025), and (Rana, et al., 2025) utilised YOLOv8 model to return an F1 score of 0.83, thus proposed F1 target deemed realistic.
-
-
-MODEL SPECIFICATIONS
--	Model: YOLOv8 
-o	Better performance/runtime over other CNNs. YOLOv8 > YOLOv7, YOLOv9 due to smaller inference, comparable mAP, CPU training (Jocher & Derrenger, 2025).
--	Dataset: ISIC 2018
-o	Larger sample size, more feature types compared to past datasets (ISIC, 2018).
-o	More variability and sample size = higher generalization = better performance on unseen data thus more robust for real world applications.
-o	Reinforces importance of pre-processing data, efficient usage of limited GPU resources (Rangpur), associated GPU framework (eg. PyTorch).
--	Difficulty: Normal Difficulty
-
-ABOUT ISIC2018 – Initial Data Audit
-ISIC 2018 dataset consists of 11,527 total images, with a 10,015-1512 training-testing split (ISIC, 2018). It contains a total of 7 classes, of which two classes are malignant (Melanoma, Basal Cell Carcinoma). It must also be noted that one class is deemed as pre-cancerous (Actinic Keratosis), which has a small chance of progression into Squamous Cell Carcinoma. Particular images count for each class are provided, and ground truth data is provided for the training set images only (Cassidy, et al., 2022). It must be noted that ISIC 2018 images possess variable sizes (pixel x pixel) and resolutions, with corresponding ground truth segmentation masks matching the dimensions of the parent lesion image (ISIC, 2018) 
-
-KEY TECHNICAL RISKS
--	Difficulties with pre-processing of data due to variable sizes, resolutions
--	Data leakage between splits  avoids overinflation of performance metrics
--	Data augmentation: important for classification of classes with lower prevalence within data set (ie. rarer lesion types – see source for specific image counts)  avoids overfitting
--	Limited GPU resources (Rangpur)
-
-NEXT STEPS
--	Implement YOLOv8 for smaller, pre-standardized dataset eg. MNIST
--	See if ISIC2018 has pt. data IDs – if not, can split images however I want (no worries about data leakage(??))
--	Decide if binary (saying simply malignaant vs non-malignant) or 7 classes  using 7 classes might be better because don’t have to worry about the pre-cancerous types 10% leading to it
-Bibliography
-ISIC, 2018. ISIC Challenge Datasets. [Online] 
-Available at: https://challenge.isic-archive.com/data/#2018
-Jocher, G., 2025. YOLOv7 vs YOLOv8. [Online] 
-Available at: https://docs.ultralytics.com/compare/yolov8-vs-yolov9
-Jocher, G. & Derrenger, P., 2025. YOLOv8 vs YOLOv9. [Online] 
-Available at: https://docs.ultralytics.com/compare/yolov8-vs-yolov9
-Jocher, G. et al., 2023. Performance Metrics Deep Dive. [Online] 
-Available at: https://docs.ultralytics.com/guides/yolo-performance-metrics
-Rana, L., Modi, N. & Pandey, S., 2025. Explainable YOLO models for early skin cancer detection using hair artifact removal and VGG16 guided annotation. Discover Artifical Intelligence, 5 (358), pp. https://doi.org/10.1007/s44163-025-00637-7.
-Saeed, M., Afify, Y., Badr, N. & Helal, N., 2025. Multimodal deep learning ensemble framework for skin cancer detection. Scientific Reports, pp. 10.1038/s41598-025-30534-z.
+The feasability report completed for this project is attached below.
+[text](<lesion-detection-48741510/SupportingImages/Feasability Report.pdf>)
 
 # Dependencies
 
