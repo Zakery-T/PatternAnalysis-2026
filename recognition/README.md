@@ -28,10 +28,10 @@ Dependencies required for this project are included within *requirements.txt*. N
 
 # Example
 Examples of an output image for *evaluate.py* is attached below. Other images generated include plots and curves, which will be discussed further in **Investigation of the Open Research Dilemma**.
-![alt text](lesion-detection-48741510/outputs/yolo_val/val_batch1_pred.jpg)
+![alt text](lesion-detection-48741510/Supporting/val_batch1_pred.jpg)
 
 Examples of an output for a single image prediction for *predict.py* is attached below.
-![alt text](lesion-detection-48741510/outputs/predict/lesion_predictions/ISIC_0015963.jpg)
+![alt text](lesion-detection-48741510/Supporting/ISIC_0015963.jpg)
 
 # Data Pre-Procesing
 ## Pre-Processing Images for YOLO compatibility
