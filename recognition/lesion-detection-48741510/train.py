@@ -1,6 +1,6 @@
 #  following process from https://docs.ultralytics.com/usage/python
 from modules import load_initial_model, load_trained
-from config import DATA_DIR, BASE_MODEL, IMGSZ, EPOCHS, BATCH, WORKERS, SEED, write_data_yaml, PROJECT_NAME
+from config import DATA_DIR, BASE_MODEL, IMGSZ, EPOCHS, BATCH, WORKERS, SEED, write_data_yaml, PROJECT_NAME, BOX, DFL, CLS
 
 def main():
     data_yaml = write_data_yaml() # creation of data_yaml file - now automated
@@ -14,10 +14,15 @@ def main():
         batch = BATCH,
         device = 0, # GPU 
         workers = WORKERS, # Rangpur recommendation - avoids slowdown/freeze
+	    box = BOX,
+	    dfl = DFL,
+        cls = CLS,
         seed = SEED, #  for fair comparison
         project = "runs", # output directory
-        name = PROJECT_NAME # subfolder in output directory using pre-defined name in config.py
+        name = PROJECT_NAME# subfolder in output directory using pre-defined name in config.py
     )
+
+    
 
     best = results.save_dir / "weights" / "best.pt"
     

@@ -43,6 +43,9 @@ EPOCHS = 50
 BATCH = 16
 WORKERS = 1 # Rangpur recommendation
 SEED = 0 # For repeatability
+BOX = 15
+DFL = 2.0
+CLS = 0.3
 
 # For evaluation.py and predict.py
 CONF_EVAL = 0.001   # low, so scores are kept for AUC (ie. how well model distinguises between classes)
