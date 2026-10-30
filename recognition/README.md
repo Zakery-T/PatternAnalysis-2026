@@ -1,12 +1,12 @@
 # Pattern Recognition 2026 Project: Lesion Detection and Classification using YOLOv8
 ---
-Name: Zakery Tsin
+Name: Zakery Tsin \ 
 Student ID: s48741510
 
 ## Key Project Information
-Dataset: ISIC2017
-Model: YOLOv8 (pre-trained models available via ultralytics)
-Description: Developing a model based on YOLOv8 which detects and classifies lesions within the ISIC 2017 dataset. Analyse how this model balances precision and recall, and in turn optimise it in order to achieve the ideal balance between these factors. Subsequently, develop an operational policy which triages biopsy based on suspected maligncancy of lesion (classification).
+Dataset: ISIC2017 \
+Model: YOLOv8 (pre-trained models available via ultralytics) \
+Description: Developing a model using YOLOv8 which detects and classifies lesions within the ISIC 2017 dataset. Analyse how this model balances precision and recall, and in turn optimise it to achieve the ideal balance between these factors. Subsequently, develop an operational policy which triages biopsy based on suspected maligncancy of lesion (classification).
 
 ## YOLOv8
 ### Algorithm Description
@@ -22,14 +22,16 @@ Evolving from YOLOv5, major architectural differences between YOLOv8 and its pre
 The feasability report completed for this project is attached via this [link](<lesion-detection-48741510/SupportingImages/Feasability Report.pdf>).
 
 # Dependencies
-Dependencies required for this project are included within *requirements.txt*. Note that *ultralytics* is built on top of PyTorch, and thus installing this package will install the necessary modules for this functionality.
+Dependencies required for this project are included within [requirements.txt](lesion-detection-48741510/requirement.txt) Note that *ultralytics* is built on top of PyTorch, and thus installing this package will install the necessary modules for this functionality.
 
 # Examples
-Examples of an output image for *evaluate.py* is attached below. Other images generated include plots and curves, which will be discussed further in **Investigation of the Open Research Dilemma**.
-![alt text](lesion-detection-48741510/Supporting/val_batch1_pred.jpg)
+Example outputs stem from the two files [predict.py](lesion-detection-48741510/predict.py) and [evaluate.py](lesion-detection-48741510/evaluate.py). Examples of these outputs are shown below.
 
-Examples of an output for a single image prediction for *predict.py* is attached below.
-![alt text](lesion-detection-48741510/Supporting/ISIC_0015963.jpg)
+**predict.py (run on ISIC_0015963.jpg)**
+![alt text](lesion-detection-48741510/outputs/predict/lesion_predictions/ISIC_0015963.jpg)
+
+**evaluate.py (validation batch 01)**
+![alt text](lesion-detection-48741510/Supporting/val_batch1_pred.jpg)
 
 # Data Pre-Procesing
 ## Pre-Processing Images for YOLO compatibility
@@ -59,8 +61,8 @@ Using the files as configured within the repository, the results obtained were T
 
 # Investigation of the Open Research Dilemma
 ## Quantitative Benchmarking
-The baseline model utilised to test YOLOv8 performance against was YOLOv3, in particular "yolov3-tinyu.pt" weights as included within the Ultralytics package. For the implemented model, a pre-trained YOLOv8 model (pre-trained on COCO dataset)
-The final models configuration that I used for this report can be found in config.py. Its e results can also be found in results.txt, all of which are based on the ISIC2017 test split (600 images). IoU is the top-confidence predicted box against the mask-derived box. 
+The baseline model utilised to test YOLOv8 performance against was YOLOv3, in particular "yolov5-tinyu.pt" weights as included within the Ultralytics package. For the implemented model, a pre-trained YOLOv8 model (pre-trained on COCO dataset)
+The final models configuration that I used for this report can be found in config.py. Its results can also be found in results.txt, all of which are based on the ISIC2017 test split (600 images). IoU is the top-confidence predicted box against the mask-derived box. 
 
 
 As outlined above, the target mean IoU of > 0.8 was unable to be met. This was despite extensive experimentation on the YOLOv8 configuration, which are as outlined below.
