@@ -19,7 +19,8 @@ from pathlib import Path
 from modules import load_trained
 
 # configurations
-from config import WEIGHTS, DATA_DIR, OUT_DIR, CLASS_NAMES, CONF_EVAL, IOU_TARGET, IMG_EXTS, NO_DET, IMGSZ, write_data_yaml
+from config import (WEIGHTS, DATA_DIR, EVAL_SPLIT, EVAL_DEVICE, RUN_MAP, EVAL_OUT,
+                    CLASS_NAMES, CONF_EVAL, IOU_TARGET, IMG_EXTS, NO_DET, IMGSZ, write_data_yaml)
 
 
 def get_image_paths(split_dir):
@@ -58,6 +59,7 @@ def select_prediction(detections):
         return None  # ie. no lesion detected
     return max(detections, key=lambda d: d[1]) # ie. returns the best prediction the model can offer
 
+
 def class_scores(detections):
     """Returns max confidence score per class."""
     scores = [0.0] * len(CLASS_NAMES)  # initialisation
@@ -82,7 +84,7 @@ def box_iou(box_a, box_b):
     return inter / union if union > 0 else 0.0
 
 # NOTE: Claude Sonnet 5.0 (Medium) assisted throughout
-def run_predictions(model_current, img_dir, label_dir, device):
+def run_predictions(model_current, img_dir, label_dir, device, select=select_prediction):
     """Predicts every image; stores true class, predicted class, scores and IoU.""" # ie. fusing all the previous functions
     image_paths = get_image_paths(img_dir)
     results = []
@@ -94,7 +96,7 @@ def run_predictions(model_current, img_dir, label_dir, device):
         true_box = read_true_box(label_path)  # read once, reused below
         detections = predict_image(model_current, img_path, device)  # actual detected lesion
 
-        prediction = select_prediction(detections) # most likely prediction of what the image actually is according to the model
+        prediction = select(detections) # most likely prediction of what the image actually is according to the model
         if prediction is None: # ie. no lesion detected thus no prediction
             pred_class, pred_box = NO_DET, None 
             iou, best_iou = 0.0, 0.0
@@ -122,6 +124,21 @@ def compute_iou_metrics(ious, pred):
         "share_at_target": np.mean(ious >= IOU_TARGET), # fraction of images that hit IoU target
         "n_detected": int(detected.sum()), # number of images with at least 1 detection
     }
+
+def compute_per_class_iou(true, ious):
+    """Mean IoU and share of images reaching the IoU target, for each true class.
+    Misses count as IoU 0, so they are included in the mean."""
+    per_class = {}
+    for c, name in enumerate(CLASS_NAMES):
+        mask = true == c  # images whose true class is c
+        if mask.any():
+            per_class[name] = {
+                "mean_iou": float(ious[mask].mean()),
+                "share_at_target": float(np.mean(ious[mask] >= IOU_TARGET)),
+                "share_gt_0.5": float(np.mean(ious[mask] > 0.5)),
+                "n": int(mask.sum()),
+            }
+    return per_class
 
 def compute_map(model, data_yaml, device, out_dir, split):
     """YOLO built-in validation on given split - gives standard detection metrics -->
@@ -179,84 +196,51 @@ def compute_melanoma_metrics(true, pred, scores):
     auc = roc_auc_score(y_true, scores[:, 0])
     return sensitivity, specificity, auc
 
-# NOTE: Claude Sonnet 5.0 (Medium)
-def save_visualisations(model, image_paths, out_dir, device):
-    """Saves images with predicted boxes and labels drawn on."""
-    os.makedirs(out_dir, exist_ok=True) # output folder creation
-    for img_path in image_paths: # for each example image
-        result = model.predict(img_path, imgsz=IMGSZ, conf=0.25, # display threshold, only plausible boxes drawn
-                               device=device, verbose=False)[0]
-        cv2.imwrite(os.path.join(out_dir, os.path.basename(img_path)), result.plot()) # saving image
-
-
-# NOTE: Below functions as part of investigation into poor IoU - written by Claude Sonnet 5.0 (Medium)
-def save_worst_overlays(image_paths, ious, pred_boxes, true_boxes, out_dir, n=20):
-    """Step 1: saves the n lowest-IoU test images with the true box (green) and predicted box (red)."""
+# NOTE: Claude Sonnet 5.0 (Medium) - updated on 29/10/2026 to include true class vs model bounding boxes
+def save_visualisations(image_paths, indices, pred, scores, ious, pred_boxes, true, true_boxes, out_dir):
+    """Saves example images showing exactly what was scored: the top-confidence predicted box (red),
+    the mask-derived true box (green), and a label with true class, predicted class, confidence and IoU.
+    Unlike model.predict(conf=0.25), low-confidence boxes are still drawn."""
     os.makedirs(out_dir, exist_ok=True)
-    for rank, idx in enumerate(np.argsort(ious)[:n]):
-        img = cv2.imread(image_paths[idx])
-        scale = 900 / max(img.shape[:2])          # shrink very large images
-        img = cv2.resize(img, None, fx=scale, fy=scale)
+    for rank, i in enumerate(indices):
+        img = cv2.imread(image_paths[i])
+        s = 900 / max(img.shape[:2])                     # shrink very large images
+        img = cv2.resize(img, None, fx=s, fy=s)
         h, w = img.shape[:2]
 
         def draw(box, colour):
             cx, cy, bw, bh = box
-            p1 = (int((cx - bw / 2) * w), int((cy - bh / 2) * h))
-            p2 = (int((cx + bw / 2) * w), int((cy + bh / 2) * h))
-            cv2.rectangle(img, p1, p2, colour, 3)
+            cv2.rectangle(img, (int((cx - bw / 2) * w), int((cy - bh / 2) * h)),
+                          (int((cx + bw / 2) * w), int((cy + bh / 2) * h)), colour, 3)
 
-        draw(true_boxes[idx], (0, 255, 0))        # true (mask-derived): green
-        if pred_boxes[idx] is not None:
-            draw(pred_boxes[idx], (0, 0, 255))    # predicted: red
-        cv2.putText(img, f"IoU {ious[idx]:.2f}", (10, 40),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)
-        name = os.path.basename(image_paths[idx])
+        draw(true_boxes[i], (0, 255, 0))                 # true: green
+        if pred_boxes[i] is not None:
+            draw(pred_boxes[i], (0, 0, 255))             # predicted: red
+        pred_name = CLASS_NAMES[pred[i]] if pred[i] != NO_DET else "none"
+        lines = [f"true: {CLASS_NAMES[true[i]]}",
+                 f"pred: {pred_name}  conf {scores[i].max():.2f}  IoU {ious[i]:.2f}"]
+        for k, text in enumerate(lines):
+            cv2.putText(img, text, (10, 35 + 35 * k), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
+        name = os.path.basename(image_paths[i])
         cv2.imwrite(os.path.join(out_dir, f"{rank:02d}_{name}"), img)
 
-# NOTE: as above
-def bias_report(pred_boxes, true_boxes):
-    """Step 2: signed prediction-minus-truth errors. A mean far from 0 suggests systematic bias;
-    a mean near 0 with a large spread suggests random error (a regression limit)."""
-    pairs = [(p, t) for p, t in zip(pred_boxes, true_boxes) if p is not None]
-    p = np.array([x[0] for x in pairs])
-    t = np.array([x[1] for x in pairs])
-    print("\n=== Box bias (predicted minus true, normalised units) ===")
-    for i, name in enumerate(["centre x", "centre y", "width", "height"]):
-        d = p[:, i] - t[:, i]
-        print(f"{name}: mean {d.mean():+.4f}, std {d.std():.4f}, mean abs {np.abs(d).mean():.4f}")
-    ratio = (p[:, 2] * p[:, 3]) / (t[:, 2] * t[:, 3])
-    print(f"Predicted/true box area: median {np.median(ratio):.3f}, "
-          f"larger than true in {np.mean(ratio > 1):.1%} of images")
-
 # NOTE: Formatting of below for data collection was written by Claude Sonnet 5.0 (Medium)
+
 def main():
-    # arguments for diagnosing of issues in code - not really necessary, but included for my troubleshooting at the time
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--weights", default=WEIGHTS, help="path to best.pt")
-    parser.add_argument("--data", default=DATA_DIR, help="dataset folder from dataset.py")
-    parser.add_argument("--out", default=OUT_DIR, help="output folder")
-    parser.add_argument("--device", default="cpu", help="'cpu' or GPU index, e.g. 0")
-    parser.add_argument("--no-map", action="store_true", help="skip the YOLO mAP step")
-    parser.add_argument("--diagnose", action="store_true", help="save worst-IoU overlays and print box bias")
-    parser.add_argument("--split", default="test", help="split to evaluate: val or test")
-    args = parser.parse_args()
-    device = int(args.device) if args.device.isdigit() else args.device
+    # directories and the generated data yaml
+    img_dir = os.path.join(DATA_DIR, EVAL_SPLIT, "images")
+    label_dir = os.path.join(DATA_DIR, EVAL_SPLIT, "labels")
+    data_yaml = write_data_yaml(DATA_DIR, Path(EVAL_OUT) / "data_eval.yaml")
 
+    model = load_trained(WEIGHTS)  # run at IMGSZ from config.py
+    print(f"Weights: {WEIGHTS}\nSplit: {EVAL_SPLIT}, imgsz: {IMGSZ}, device: {EVAL_DEVICE}")
+    results, no_det = run_predictions(model, img_dir, label_dir, EVAL_DEVICE)
+    print(f"No detection: {no_det}/{len(results)}")  # images with 0 detections
 
-    # initialising of the relative directories and .yaml file
-    img_dir = os.path.join(args.data, args.split, "images")
-    label_dir = os.path.join(args.data, args.split, "labels")
-    data_yaml = write_data_yaml(args.data, Path(args.out) / "data_eval.yaml")
-
-    model = load_trained(args.weights)  # loading of trained model
-    results, no_det = run_predictions(model, img_dir, label_dir, device)
-    print(f"No detection: {no_det}/{len(results)}") # seeing how many images had 0 detections
-
-    true, pred, scores, ious, best_ious, pred_boxes, true_boxes = zip(*results)
+    true, pred, scores, ious, best_ious, pred_boxes, true_boxes = zip(*results)  # unbundle results
     true, pred = np.array(true), np.array(pred)
     scores, ious, best_ious = np.array(scores), np.array(ious), np.array(best_ious)
 
-    # NOTE: Claude Sonnet 5.0 (Medium)
     # --- localisation: task target ---
     iou = compute_iou_metrics(ious, pred)
     print("\n=== Localisation (top-confidence box vs mask-derived box) ===")
@@ -266,11 +250,16 @@ def main():
     print(f"Images with IoU >= {IOU_TARGET}: {iou['share_at_target']:.1%}")
     print(f"Target (mean IoU >= {IOU_TARGET}) met: {iou['mean_all'] >= IOU_TARGET}")
     print(f"Mean IoU, best detection per image: {best_ious.mean():.3f}")
-    print(f"Split evaluated: {args.split}")
+    print(f"Split evaluated: {EVAL_SPLIT}")
+    print("\n=== Per-class localisation (grouped by TRUE class) ===")
+    for name, v in compute_per_class_iou(true, ious).items():
+        print(f"{name}: mean IoU {v['mean_iou']:.3f}, IoU > 0.5: {v['share_gt_0.5']:.1%}, "
+              f"IoU >= {IOU_TARGET}: {v['share_at_target']:.1%}, n={v['n']}")
+
     # --- detection metrics (Ultralytics) ---
-    if not args.no_map:
-        det = compute_map(model, data_yaml, device, args.out, args.split)
-        print("\n=== Detection metrics (Ultralytics val, test split) ===")
+    if RUN_MAP:
+        det = compute_map(model, data_yaml, EVAL_DEVICE, str(EVAL_OUT), EVAL_SPLIT)
+        print(f"\n=== Detection metrics (Ultralytics val, {EVAL_SPLIT} split) ===")
         print(f"Overall: mAP50 {det['map50']:.3f}, mAP50-95 {det['map']:.3f}, "
               f"P {det['p']:.3f}, R {det['r']:.3f}")
         print(f"AP at IoU 0.8 (mean over classes): {det['ap_at_0.8']:.3f}")
@@ -278,8 +267,6 @@ def main():
             print(f"{name}: P {m['P']:.3f}, R {m['R']:.3f}, "
                   f"mAP50 {m['mAP50']:.3f}, mAP50-95 {m['mAP50-95']:.3f}")
 
-
-    # NOTE: Claude Sonnet 5.0 (Medium)
     # --- classification ---
     matrix = compute_confusion_matrix(true, pred)
     print("\n=== Classification (top-confidence box per image) ===")
@@ -287,22 +274,16 @@ def main():
     for name, m in compute_class_metrics(matrix).items():
         print(f"{name}: precision {m['precision']:.3f}, recall {m['recall']:.3f}, F1 {m['f1']:.3f}")
     print(f"Overall accuracy: {np.mean(true == pred):.3f}")
-
     sens, spec, auc = compute_melanoma_metrics(true, pred, scores)
     print(f"Melanoma vs rest: sensitivity {sens:.3f}, specificity {spec:.3f}, AUC {auc:.3f}")
 
     image_paths = get_image_paths(img_dir)
-    if args.diagnose:
-        bias_report(pred_boxes, true_boxes)
-        save_worst_overlays(image_paths, ious, pred_boxes, true_boxes,
-                            os.path.join(args.out, "worst_iou"))
-        print(f"Worst-IoU overlays saved to {os.path.join(args.out, 'worst_iou')}")
-    
     # example images: up to 10 failures and 10 correct for failure analysis--> produces outputs/examples/...
-    wrong = [p for p, t, q in zip(image_paths, true, pred) if t != q][:10]
-    right = [p for p, t, q in zip(image_paths, true, pred) if t == q][:10]
-    save_visualisations(model, wrong + right, os.path.join(args.out, "examples"), device)
-    print(f"\nExamples saved to {args.out}/examples")
+    wrong = [i for i in range(len(true)) if true[i] != pred[i]][:10]
+    right = [i for i in range(len(true)) if true[i] == pred[i]][:10]
+    save_visualisations(image_paths, wrong + right, pred, scores, ious, pred_boxes,
+                        true, true_boxes, os.path.join(EVAL_OUT, "examples"))
+    print(f"\nExamples saved to {EVAL_OUT}/examples")
 
 
 if __name__ == "__main__":
