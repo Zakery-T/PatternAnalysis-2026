@@ -10,9 +10,7 @@ Description: Developing a model based on YOLOv8 which detects and classifies les
 
 ## YOLOv8
 ### Algorithm Description
-YOLO (You Only Look Once) models are a family of object detection models. They combine bounding box prediction and class labelling within a single pass (rather than traditional two-stage approach employed by other model types). In other words, YOLO models identify regions of interest (bounding boxes) for where an object is present, and then classify that specific region of interest (class labelling) within a single pass (https://roboflow.com/blog/guide-to-yolo-models). 
-
-General YOLO models significantly improved runtimes and thus efficiency by drifting from the traditional CNN multi-stage detection methods to the aforementioned single-pass methodology. While earlier models did initially struggle with maintaininng accuracy of their predictions, the various iterations the family has gone through (all the way up to YOLOv26 as of Oct 2026) has acted to rectify this issue, with models such as YOLOv8 able to maintain accuracy while also greatly improving runtimes (https://arxiv.org/pdf/2208.00773).
+YOLO (You Only Look Once) models are a family of object detection models. They combine bounding box prediction and class labelling within a single pass (rather than traditional two-stage approach employed by other model types). In other words, YOLO models identify regions of interest (bounding boxes) for where an object is present, and then classify that specific region of interest (class labelling) within a single pass (https://roboflow.com/blog/guide-to-yolo-models). General YOLO models significantly improved runtimes and thus efficiency by drifting from the traditional CNN multi-stage detection methods to the aforementioned single-pass methodology. While earlier models did initially struggle with maintaininng accuracy of their predictions, the various iterations the family has gone through (all the way up to YOLOv26 as of Oct 2026) has acted to rectify this issue, with models such as YOLOv8 able to maintain accuracy while also greatly improving runtimes (https://arxiv.org/pdf/2208.00773).
 
 In general, "every Ultralytics YOLO model is built from three stages: a backbone that extracts features, a neck that fuses them across scales, and a head that predicts boxes and classes" (https://docs.ultralytics.com/guides/yolo-architecture). The fundamental unit for these models is the Conv block (2D convolution, bacth normalization, SiLU activation). YOLOv8 is simply a version of YOLO. Its core structure can be found here https://docs.ultralytics.com/guides/yolo-architecture, and a diagram is included within the repository (developed by GitHub user RangeKing)<img src="lesion-detection-48741510/SupportingImages/YOLOv8 Architecture Diagram (RangeKing).jpg" width="600">. 
 
@@ -70,27 +68,9 @@ As outlined above, the target mean IoU of > 0.8 was unable to be met. This was d
 
 The baseline model implemented was YOLOv8n with weights trained on the COCO dataset. This was loaded into the codebase via the ultralytics package and *load_initial_model* as part of *modules.py*. This utilized the default ultralytics settings. In comparison, the mode utilized within this repository posseessed almost the exact same architecure apart from image size, whereby the initial mode possessed 640 and the chosen model possessed 1024.
 
-
-
 Final performance results are outlined below.![alt text](../runs/imgsz1024_baseline/results.png)
 
 The target IoU of 0.8 was unable to be achieved despite numerous attempts to rectify this.
-| # | Modification | Type | Change tested | Test mean IoU | IoU ≥ 0.8 | Outcome |
-|---|---|---|---|---|---|---|
-| 0 | Baseline YOLOv8 | Training | Default config, 640 px, 50 epochs | 0.750 | 51.7% | Reference |
-| 1 | Larger image size | Training | 640 → 1024 px | 0.755 | 52.5% | Marginal IoU gain (+0.005). Clear classification gain (accuracy 0.718 → 0.757, melanoma sensitivity 0.368 → 0.547) |
-| 2 | Longer training | Training | Increased epochs | No gain | n/a | No improvement |
-| 3 | Box merging | Post-processing | Confidence-weighted average of boxes overlapping the top box | 0.758 | 53.3% | No meaningful change (within run-to-run variation) |
-| 4 | Oracle best-box diagnostic | Diagnostic | Best candidate box per image, chosen using ground truth | 0.803 | 58.3% | Upper bound only, not an achievable result. Shows ≤ 0.05 headroom from box selection |
-| 5 | Box shape diagnosis | Diagnostic | Bias report (predicted minus true) | n/a | n/a | Boxes well centred, but median predicted/true area ratio 0.84. Width and height errors are large and bidirectional |
-| 6 | Filtered mask labels | Dataset | Ignore mask fragments < 15% of the largest region | Unchanged | Unchanged | 58 of 2750 images had multiple regions, 177 fragments ignored. No measurable effect |
-| 7 | Box scale calibration | Post-processing | Width and height ×1.02, fitted on val | 0.771 | 57.8% | +0.016 gain, but still below 0.8. Not retained in the final code |
-| 8 | Consensus box selection | Post-processing | Confidence-weighted consensus box, `min_conf` = 0.1 (chosen on val) | 0.755 | 52.5% | Val improved (0.784 → 0.797) but test did not (0.755 → 0.755). Likely val noise |
-| 9 | Larger model | Training | About 3.5× parameters (11.1M vs 3.1M), 1024 px, default augmentation | 0.755 | 53.0% | IoU unchanged. Classification worsened (accuracy 0.693, melanoma sensitivity 0.444, mAP50 0.505). Model size and augmentation changed together, so effects are confounded |
-
-## Modifications attempted to improve IoU
-
-
 | # | Modification | Type | Change tested | Test mean IoU | IoU ≥ 0.8 | Outcome |
 |---|---|---|---|---|---|---|
 | 0 | Baseline YOLOv8 | Training | Default config, 640 px, 50 epochs | 0.750 | 51.7% | Reference |
@@ -108,6 +88,54 @@ The target IoU of 0.8 was unable to be achieved despite numerous attempts to rec
 - Rows 3, 7 and 8 are inference-time post-processing, not model improvements. Their settings were chosen on val and applied once to test.
 - Rows 4 and 5 are diagnostics, not attempted fixes.
 - Differences of about 0.005 fall within the run-to-run variation seen across repeated evaluations of the same weights (0.755 to 0.759), so treat them as equal.
+
+
+
+## Computational Resource Analysis
+| Resource | Value |
+| --- | ---|
+| Peak GPU RAM | 5.11G |
+| Paramater Count | 3,133,193 | 
+| Inference Runtime/Latency | Speed: 2.0ms preprocess, 77.4ms inference, 0.0ms loss, 0.5ms postprocess per image |
+
+## Failure Analysis
+Failure cases were drawn from the ISIC 2017 **test split** (600 images) using the final model with single-pass, top-confidence box selection. In each overlay, the green box is the ground-truth box and the **red box** is the model's prediction. Each overlay is labelled with the true class, predicted class, confidence and IoU.
+
+Cases were chosen to cover the main error modes visible in the quantitative results. They are grouped into classification failures and localisation failures. Explanations of cause are **hypotheses based on visual inspection**, not tested conclusions. Note that the nevus class is defined by exclusion (neither melanoma nor seborrheic keratosis), so it represents either nevus or some other benign case (not classified). Test cases were sourced from outputs/examples.
+### Part A: Classification Failures
+#### Failure Case 1: Non-Malignancy Identified as Malignancy (SK --> Melanoma)
+![alt text](<lesion-detection-48741510/outputs/10 true 10 false/00_ISIC_0012199.jpg>)
+**Observation:** The lesion shows irregular borders and pigmentation noticeably darker than that of typical SK examples in the dataset.
+**Hypothesis:** These features overlap with those associated with early-stage melanoma, which may explain the prediction.
+**Implication:** Under the proposed operating policy this is a false alarm that would be routed to clinical review, increasing clinic burden but posing no patient risk.
+
+#### Failure Case 2: SK predicted as nevus / other benign
+![alt text](lesion-detection-48741510/outputs/examples/07_ISIC_0012272.jpg)
+**Observation:** The lesion appears to display features typical of well-developed/severe SK. In the example images inspected, similar severities of SK presentations were uncommon, with most ground-truth SK images appearing milder.
+**Hypothesis:** If this holds across the dataset, the model may have seen few advanced SK presentations in training. This could explain its poor classification performance.
+**Implication:** Both classes are benign, so the clinical risk is low. The error would still misdirect follow-up.
+
+#### Case 3: Missed melanoma, predicted as nevus / other benign
+![alt text](lesion-detection-48741510/outputs/examples/10_ISIC_0012395.jpg)
+**Observation:** The lesion has relatively smooth, well-defined borders, a feature more typical of nevus than of melanoma.
+**Hypothesis:** Border regularity is only one of several dermoscopic cues, but the model may rely heavily on it. Class imbalance in ISIC2017 means that the model may also have limited exposure to atypical-looking melanomas.
+**Implication:** This is the clinically most serious error type, since an automatically cleared melanoma delays diagnosis. It motivates a lowered melanoma decision threshold in the operating policy (see the Recommendations section).
+
+### Part B: Localisation failures
+#### Failure Case 4: Low IoU with with poor bounding box 
+![alt text](lesion-detection-48741510/outputs/examples/14_ISIC_0012484.jpg)
+
+**Observation:** Poor IoU, with models bounding box dramatically larger than ground truth. The surrounding skin appears flaky with lots of hair present, which may produce a texture that resembles a potential lesion boundary.
+**Hypothesis:** Surface texture may have shifted the predicted extent, and the model may also have confused the lesion type (SK predicted in place of nevus).
+
+#### Failure Case 5 Multi-part or fragmented lesion
+![alt text](lesion-detection-48741510/outputs/test_final/worst_iou/02_ISIC_0015115.jpg)
+*NOTE*: This is from worst-ious study into possible ways to improve mean IoU
+**Observation:** Poor IoU, with model focussed on a single fragment of a much larger lesion. For additional context, as part of testing to try and improve Mean IoU across all classes, a set of 20 of the worst-case IoU images was produced. Of these 20, 6 contained multi-part lesions.
+**Hypothesis:** Multi-part lesions harder to classify, and the model instead focussed on the fragment that was more pronounced (pigmented) and with more regular borders, which it has likely seen much more similar variations of when in training.
+
+# Limitations of the Study
+ISIC2017 does not ship with patient ID labels, and as such leakage was unable to be assessed despite best attempts made to try. Unless done externally, each image is treated as independent, even if it is the same picture of a lesion. The ISIC2017 dataset also has a major class imbalance, with images weighted mainly to Nevus, with much less images attributed to SK or Melanoma types. This is a further exacerbated by the major variation between SK and Melanoma cases, and resulted in the model performing worse on these test cases, as the reduced training images available meant the model struggled to generalize. Augmentation of the dataset itself rather than further modifications of the YOLOv8 model may yield better results. 
 
 
 
