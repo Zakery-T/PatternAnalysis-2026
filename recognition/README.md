@@ -58,12 +58,11 @@ In order to reproduce the results obtained within this repository, follow the be
 6. Run evaluate.py to generate model performance metrics (mAP, mean IoU, Precision (P), Recall (R), etc.). 
 7. Run predict.py for per-detection results and annotated images. Outputs will be saved under outputs/predict
 
-Using the files as configured within the repository, the results obtained were Test Mean IoU approx 0.755, accuracy approx 0.757
-
 # Investigation of the Open Research Dilemma
 ## Quantitative Benchmarking
 ### Training Results
-Results of model training are visualised below within ![results.png](lesion-detection-48741510/Supporting/results.png). This illustrates loss minimisation as epoch count rose, with an associated increase in performance metrics despite a non-linear increase. The F1-Confidence curve illustrates the confidence level to achieve the optimal balance between precision and recall given the current model. The generated PR curve illustrates the tradeoff between avoiding false positives (precision) and catching all actual positive (recall). In terms of the Open Research Dilemna, recall should likely be prioritised due to the inherent danger associated with missing a positive malginancy (a melanoma). For example, prioritising a recall of 0.8 using this model would result in an approximate 0.6 precision based on the PR curve, which may lead to increased clinic visits at the benefit of ensuring clinically significant malignancies are biopsied and caught.
+Results of model training are visualised below within ![results.png](lesion-detection-48741510/Supporting/results.png). 
+This illustrates loss minimisation as epoch count rose, with an associated increase in performance metrics despite a non-linear increase. The F1-Confidence curve illustrates the confidence level to achieve the optimal balance between precision and recall given the current model. The generated PR curve illustrates the tradeoff between avoiding false positives (precision) and catching all actual positive (recall). In terms of the Open Research Dilemna, recall should likely be prioritised due to the inherent danger associated with missing a positive malginancy (a melanoma). For example, prioritising a recall of 0.8 using this model would result in an approximate 0.6 precision based on the PR curve, which may lead to increased clinic visits at the benefit of ensuring clinically significant malignancies are biopsied and caught.
 
 ### Test Performance
 The baseline model utilised to test performance on ISIC2017 dataset was YOLOV8, in particular "yolov8n.pt". This possessed weights pre-trained on the COCO dataset. Default ultralytics model.train parameters were utilised, with the model trained on 50 epochs and with an initial image size of 640. 
@@ -106,7 +105,7 @@ As outlined within results.md, the target mean IoU of > 0.8 was unable to be met
 | 6 | Filtered mask labels | Dataset | Ignore mask fragments < 15% of the largest region | Unchanged | Unchanged | 58 of 2750 images had multiple regions, 177 fragments ignored. No measurable effect |
 | 7 | Box scale calibration | Post-processing | Width and height ×1.02, fitted on val | 0.771 | 57.8% | +0.016 gain, but still below 0.8. Not retained in the final code |
 | 8 | Consensus box selection | Post-processing | Confidence-weighted consensus box, `min_conf` = 0.1 (chosen on val) | 0.755 | 52.5% | Val improved (0.784 → 0.797) but test did not (0.755 → 0.755). Likely val noise |
-| 9 | Larger model | Training | About 3.5× parameters (11.1M vs 3.1M), 1024 px, default augmentation | 0.755 | 53.0% | IoU unchanged. Classification worsened (accuracy 0.693, melanoma sensitivity 0.444, mAP50 0.505). Model size and augmentation changed together, so effects are confounded |
+| 9 | Larger model | Training | About 3.5× parameters (11.1M vs 3.1M), 1024 px, default augmentation | 0.755 | 53.0% | IoU unchanged. Classification worsened (accuracy 0.693, melanoma sensitivity 0.444, mAP50 0.505). Possible overfitting of the model. |
 | 10 | Augmentation training | Training | mosaic = 0, scale = 0.15, translate = 0.05, flipud = 0.5 | 0.743 | 50.3% | No real significant difference between final model. |
 
 Further attempts to improve IoU resulted in increasingly worse performance on classification. Due to the negative effects of this poor classification, which could result in a malignancy being diagnosed as a non-malignancy, no further changes were made to the model, with other hyperparameters left as their defaults due to the higher performance of this final model. 
