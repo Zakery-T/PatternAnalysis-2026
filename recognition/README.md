@@ -77,6 +77,7 @@ The final models configuration that I used for this report can be found in [conf
 | SK, mean IoU | 0.615 | 0.694 |
 | Nevus, mean IoU | 0.737 | 0.777 |
 | mAP50 | 0.546 | 0.564 |
+|mAP50-95 | 0.288 | 0.331 | 
 | Images with IoU > 0.8 | 41.2% | 52.5% |
 | P | 0.477 | 0.551 |
 | R | 0.614 | 0.547 |
@@ -90,7 +91,11 @@ The F1, PR Curve and Confusion Matrix is also shown below for the test split.
 
 ![alt text](lesion-detection-48741510/Supporting/confusion_matrix.png)
 
-The summary of the above results indicates that the final model trades classification for localisation. While IoU rose, accuracy, melanoma sensitivity and AUC fell. This was due to the tuning of hyperparameters within the model which prioritised box regression, which I attempted to do in order to reach the target of IoU > 0.8. 
+The final model improves localisation at the expense of classification. Against the baseline, mean IoU rose from 0.703 to 0.753 (+0.050), and every class improved (melanoma 0.655 to 0.714, SK 0.615 to 0.694, nevus 0.737 to 0.777). The share of test images reaching IoU ≥ 0.8 rose from 41.2% to 52.5%. In contrast, overall accuracy fell from 0.747 to 0.713, melanoma sensitivity from 0.470 to 0.350, and melanoma AUC from 0.764 to 0.735. Precision rose (0.477 to 0.551) while recall fell (0.614 to 0.547), meaning the final model produces fewer spurious detections but finds fewer true lesions at the evaluated threshold. mAP50 changed little (0.546 to 0.564), as it only requires an overlap of 0.5. The increase in mAP 50-95 from baseline to final model supports improved IoU.
+
+These changes are consistent with the tuning of hyperparameters in the final shown model, with this version emphasising box regression via box, dfl and cls. Note that other models I tested did include more parameters, however this model possessed the best performance with the simplest set of parameters thus I utilised this. The individual contribution of each change could not be sufficiently isolated, and was instead implemented as a whole block.
+
+The clinical implication is important. A melanoma sensitivity of 0.350 means roughly 65% of test melanomas would be missed under the default top-confidence rule, so the final model is not suitable for unsupervised use. The use of this model as a detection AND classification method is not recommended; a two stage model may be more suitable for this, whereby if a lesion is detected then a seperate classification model is run on them instead.
 
 As outlined within results.md, the target mean IoU of > 0.8 was unable to be met. This was despite extensive experimentation on the YOLOv8 configuration, which are as outlined below.
 
