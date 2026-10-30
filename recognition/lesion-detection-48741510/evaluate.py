@@ -227,7 +227,7 @@ def save_visualisations(image_paths, indices, pred, scores, ious, pred_boxes, tr
 # NOTE: Formatting of below for data collection was written by Claude Sonnet 5.0 (Medium)
 
 def main():
-    # directories and the generated data yaml
+    # directories and the generated data yaml .
     img_dir = os.path.join(DATA_DIR, EVAL_SPLIT, "images")
     label_dir = os.path.join(DATA_DIR, EVAL_SPLIT, "labels")
     data_yaml = write_data_yaml(DATA_DIR, Path(EVAL_OUT) / "data_eval.yaml")
