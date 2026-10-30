@@ -18,12 +18,12 @@ In general, "every Ultralytics YOLO model is built from three stages: a backbone
 Evolving from YOLOv5, major architectural differences between YOLOv8 and its predecessors include an achor-free detection head, which "simplifies the training process by removing the need to manually configure anchor boxes [per dataset]", a C2f module, which "improves gradient flow and allowed the model to learn richer feature representations without a significant increase in computational cost" and a decoupled head structure, which seperates classification and regression and has been shown to improve convergence speed and accuracy (https://docs.ultralytics.com/compare/yolov8-vs-yolov5). 
 
 # Feasability Report
-The feasability report completed for this project is attached via this [link](<lesion-detection-48741510/SupportingImages/Feasability Report.pdf>).
+The feasability report completed for this project is attached via this [link](<lesion-detection-48741510/Supporting/Feasability Report.pdf>).
 
 *Please note that major changes have occurred since this feasability report, in particular the use of ISIC2018 to ISIC2017. I did message EdBoard regarding this, however I was unable to get sufficient information to get ISIC2018 up and running. As such, made the change to ISIC2017 due to its inclusion in Rangpur already.*
 
 # Dependencies
-Dependencies required for this project are included within [requirements.txt](lesion-detection-48741510/requirement.txt). Note that *ultralytics* is built on top of PyTorch, and thus installing this package will install the necessary modules for this functionality.
+Dependencies required for this project are included within [requirements.txt](lesion-detection-48741510/Supporting/requirement.txt) . Note that *ultralytics* is built on top of PyTorch, and thus installing this package will install the necessary modules for this functionality.
 
 # Examples
 Example outputs stem from the two files [predict.py](lesion-detection-48741510/predict.py) and [evaluate.py](lesion-detection-48741510/evaluate.py). Examples of these outputs are shown below.
@@ -68,7 +68,7 @@ Results of model training are visualised below within ![results.png](lesion-dete
 ### Test Performance
 The baseline model utilised to test performance on ISIC2017 dataset was YOLOV8, in particular "yolov8n.pt". This possessed weights pre-trained on the COCO dataset. Default ultralytics model.train parameters were utilised, with the model trained on 50 epochs and with an initial image size of 640. 
 
-The final models configuration that I used for this report can be found in [config.py](lesion-detection-48741510/config.py). Key parameter changes which resulted in the greatest increase in mean IoU was image size from 640 to 1024. Full results for this models performance can be found in [results.md](lesion-detection-48741510/results.md), all of which are based on the ISIC2017 test split (600 images). IoU is the top-confidence predicted box against the mask-derived box. A comparison of the baseline and final model are shown below:
+The final models configuration that I used for this report can be found in [config.py](lesion-detection-48741510/config.py). Key parameter changes which resulted in the greatest increase in mean IoU was image size from 640 to 1024. Full results for this models performance can be found in [results.md](lesion-detection-48741510/Supporting/results.md), all of which are based on the ISIC2017 test split (600 images). IoU is the top-confidence predicted box against the mask-derived box. A comparison of the baseline and final model are shown below:
 
 | --- | Baseline | Final |
 | --- | --- | --- |
