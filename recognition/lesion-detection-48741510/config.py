@@ -36,7 +36,7 @@ CLASS_NAMES = ["melanoma", "seborrheic keratosis", "nevus"]
 MIN_AREA = 50
 
 # For modules.py and train.py - training parameters
-PROJECT_NAME = "imgsz1024" # NOTE: change this name depending on what you want output saved as
+PROJECT_NAME = "yolov8" # NOTE: change this name depending on what you want output saved as
 BASE_MODEL = "yolov8n.pt" # default pre-trained YOLO model, imported from ultralytics
 IMGSZ = 1024
 EPOCHS = 50
@@ -50,6 +50,12 @@ CONF_DEMO = 0.25    # display threshold for predict.py
 IOU_TARGET = 0.8    # task target: test IoU >= 0.8 for this application
 IMG_EXTS = (".jpg", ".jpeg", ".png") # image extensions, ensures other non-relevant files ignored
 NO_DET = -1         # no (lesion) detection
+
+# evaluation settings (edit these, then run: python evaluate.py) 
+EVAL_SPLIT = "test"      # "val" or "test": choose settings on val, report test once
+EVAL_DEVICE = "cpu"      # "cpu", or a GPU index such as 0
+RUN_MAP = True           # False skips the slow Ultralytics mAP step # NOTE Claude Sonnet 5.0 (Medium)
+EVAL_OUT = OUT_DIR / f"{EVAL_SPLIT}_final"   # follows the split, so val and test outputs can't mix
 
 # NOTE: written by Claude SOnnet 5.0 (Medium)
 def write_data_yaml(data_dir=None, path=None):
