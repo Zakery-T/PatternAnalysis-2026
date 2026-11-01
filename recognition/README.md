@@ -31,8 +31,9 @@ Example outputs stem from the two files [predict.py](lesion-detection-48741510/p
 **predict.py (run on ISIC_0015963.jpg)**
 ![alt text](lesion-detection-48741510/Supporting/ISIC_0015963.jpg)
 
-**evaluate.py (validation batch 01)**
+**evaluate.py (validation batch 01 predicted labels vs actual labels)**
 ![alt text](lesion-detection-48741510/Supporting/val_batch1_pred.jpg)
+![alt text](lesion-detection-48741510/Supporting/val_batch1_labels.jpg)
 
 # Data Pre-Procesing
 ## Pre-Processing Images for YOLO compatibility
@@ -108,12 +109,12 @@ As outlined within results.md, the target mean IoU of > 0.8 was unable to be met
 | 4 | Oracle best-box diagnostic | Diagnostic | Best candidate box per image, chosen using ground truth | 0.803 | 58.3% | Upper bound only, not an achievable result. Shows ≤ 0.05 headroom from box selection |
 | 5 | Box shape diagnosis | Diagnostic | Bias report (predicted minus true) | n/a | n/a | Boxes well centred, but median predicted/true area ratio 0.84. Width and height errors are large and bidirectional |
 | 6 | Filtered mask labels | Dataset | Ignore mask fragments < 15% of the largest region | Unchanged | Unchanged | 58 of 2750 images had multiple regions, 177 fragments ignored. No measurable effect |
-| 7 | Box scale calibration | Post-processing | Width and height ×1.02, fitted on val | 0.771 | 57.8% | +0.016 gain, but still below 0.8. Not retained in the final code |
+| 7 | Box scale calibration | Post-processing | Width and height ×1.02, fitted on val | 0.771 | 57.8% | +0.016 gain, but still below 0.8. Not retained in the final code due to difficulty with reproducibility, wanted to keep model simpler as little gain could have been attributed to noise. |
 | 8 | Consensus box selection | Post-processing | Confidence-weighted consensus box, `min_conf` = 0.1 (chosen on val) | 0.755 | 52.5% | Val improved (0.784 → 0.797) but test did not (0.755 → 0.755). Likely val noise |
 | 9 | Larger model | Training | About 3.5× parameters (11.1M vs 3.1M), 1024 px, default augmentation | 0.755 | 53.0% | IoU unchanged. Classification worsened (accuracy 0.693, melanoma sensitivity 0.444, mAP50 0.505). Possible overfitting of the model. |
 | 10 | Augmentation training | Training | mosaic = 0, scale = 0.15, translate = 0.05, flipud = 0.5 | 0.743 | 50.3% | No real significant difference between final model. |
 
-Further attempts to improve IoU resulted in increasingly worse performance on classification. Due to the negative effects of this poor classification, which could result in a malignancy being diagnosed as a non-malignancy, no further changes were made to the model, with other hyperparameters left as their defaults due to the higher performance of this final model. 
+Further attempts to improve IoU, which were mainly further tuning of hyperparameters (eg. merging of box regression focusesed changes and the augmentation training in 10) resulted in increasingly worse performance on classification. Due to the negative effects of this poor classification, which could result in a malignancy being diagnosed as a non-malignancy, no further changes were made to the model, with other hyperparameters left as their defaults due to the higher performance of this final model. 
 
 ## Computational Resource Table
 | Resource | Value |
@@ -140,10 +141,11 @@ Cases were chosen to cover the main error modes visible in the quantitative resu
 **Implication:** Both classes are benign, so the clinical risk is low. The error would still misdirect follow-up.
 
 #### Case 3: Missed melanoma, predicted as nevus / other benign
-![alt text](lesion-detection-48741510/Supporting/10_ISIC_0012395.jpg)
+![alt text](lesion-detection-48741510/Supporting/ISIC_0014428.png)
 **Observation:** The lesion has relatively smooth, well-defined borders, a feature more typical of nevus than of melanoma.
 **Hypothesis:** Border regularity is only one of several dermoscopic cues, but the model may rely heavily on it. Class imbalance in ISIC2017 means that the model may also have limited exposure to atypical-looking melanomas.
 **Implication:** This is the clinically most serious error type, since an automatically cleared melanoma delays diagnosis. It motivates a lowered melanoma decision threshold in the operating policy (see the Recommendations section).
+NOTE this is missing bounding boxes - chosen manually as a representive test case, as double bounding box code produces examples randomly.
 
 ### Part B: Localisation failures
 #### Failure Case 4: Low IoU with with poor bounding box 
