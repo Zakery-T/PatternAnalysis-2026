@@ -102,7 +102,7 @@ As outlined within results.md, the target mean IoU of > 0.8 was unable to be met
 | # | Modification | Type | Change tested | Test mean IoU | IoU ≥ 0.8 | Outcome |
 |---|---|---|---|---|---|---|
 | 0 | Baseline YOLOv8 | Training | Default config, 640 px, 50 epochs | 0.703 | 41.2% | Reference |
-| 1 | Larger image size | Training | 640 → 1024 px | 0.755 | 52.5% | Marginal IoU gain (+0.005). Clear classification gain (accuracy 0.718 → 0.757, melanoma sensitivity 0.368 → 0.547) |
+| 1 | Larger image size | Training | 640 → 1024 px | 0.750 | 52.5% |  IoU gain. Clear classification gain. |
 | 2 | Longer training | Training | Increased epochs | No gain | n/a | No improvement |
 | 3 | Box merging | Post-processing | Confidence-weighted average of boxes overlapping the top box | 0.758 | 53.3% | No meaningful change (within run-to-run variation) |
 | 4 | Oracle best-box diagnostic | Diagnostic | Best candidate box per image, chosen using ground truth | 0.803 | 58.3% | Upper bound only, not an achievable result. Shows ≤ 0.05 headroom from box selection |
